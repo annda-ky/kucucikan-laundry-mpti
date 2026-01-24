@@ -9,8 +9,14 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
+    console.log('[DEBUG] UserService.create called');
+    console.log(
+      `[DEBUG] Received PIN type: ${typeof createUserDto.pin}, Value: ${createUserDto.pin}`,
+    );
+
     const salt: string = await bcrypt.genSalt();
     const hash: string = await bcrypt.hash(createUserDto.pin, salt);
+    console.log(`[DEBUG] Generated Hash: ${hash}`);
 
     return this.prisma.user.create({
       data: {

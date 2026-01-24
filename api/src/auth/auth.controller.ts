@@ -2,9 +2,18 @@ import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 
+import { IsString, IsNotEmpty, IsEnum } from 'class-validator';
+
 class RegisterDto {
+  @IsString()
+  @IsNotEmpty()
   username: string;
+
+  @IsString()
+  @IsNotEmpty()
   pin: string;
+
+  @IsEnum(['ADMIN', 'OWNER'])
   role: 'ADMIN' | 'OWNER';
 }
 

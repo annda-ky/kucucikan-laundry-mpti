@@ -51,11 +51,21 @@ export class UsersService {
     });
   }
 
-  remove(id: string) {
-    // Soft Delete
-    return this.prisma.user.update({
-      where: { id },
-      data: { isActive: false },
-    });
+  async remove(id: string) {
+    try {
+      // Coba Hard Delete dulu (untuk user typo/test yg belum ada transaksi)
+      return await this.prisma.user.delete({
+        where: { id },
+      });
+    } catch (error) {
+      // P2003 = Foreign Key Constraint failed (artinya user sudah punya data relasi)
+      if (error.code === 'P2003') {
+        return this.prisma.user.update({
+          where: { id },
+          data: { isActive: false },
+        });
+      }
+      throw error;
+    }
   }
 }

@@ -11,6 +11,7 @@ export interface UpdateUserDto {
   username?: string;
   pin?: string;
   isActive?: boolean;
+  role?: "ADMIN" | "OWNER";
 }
 
 export const userService = {

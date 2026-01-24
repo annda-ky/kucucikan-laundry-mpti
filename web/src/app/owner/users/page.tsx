@@ -16,8 +16,8 @@ import {
 import { toast } from "react-hot-toast";
 import {
   userService,
-  type CreateUserPayload,
-  type UpdateUserPayload,
+  type CreateUserDto,
+  type UpdateUserDto,
 } from "@/services/user.service";
 import type { User, Role } from "@/types";
 
@@ -278,13 +278,11 @@ function UserFormModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [formData, setFormData] = useState<CreateUserPayload & { id?: string }>(
-    {
-      username: initialData?.username || "",
-      pin: "",
-      role: initialData?.role || "ADMIN",
-    },
-  );
+  const [formData, setFormData] = useState<CreateUserDto & { id?: string }>({
+    username: initialData?.username || "",
+    pin: "",
+    role: initialData?.role || "ADMIN",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -309,7 +307,7 @@ function UserFormModal({
       if (mode === "CREATE") {
         await userService.create(formData);
       } else if (initialData?.id) {
-        const updatePayload: UpdateUserPayload = {
+        const updatePayload: UpdateUserDto = {
           username: formData.username,
           role: formData.role,
         };

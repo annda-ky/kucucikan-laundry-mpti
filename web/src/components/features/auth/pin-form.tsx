@@ -6,11 +6,9 @@ import { Waves, Delete, ArrowRight, Loader2, User } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { authService } from "@/services/auth.service";
 
-type UserRole = "owner" | "admin";
-
 export function PinForm() {
   const [pin, setPin] = useState("");
-  const [username, setUsername] = useState<UserRole>("admin");
+  const [username, setUsername] = useState("admin");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -69,10 +67,6 @@ export function PinForm() {
         setPin((prev) => prev.slice(0, -1));
       }
       // Tab to switch user type
-      if (e.key === "Tab") {
-        e.preventDefault();
-        setUsername((prev) => (prev === "admin" ? "owner" : "admin"));
-      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -99,36 +93,25 @@ export function PinForm() {
         </div>
       </div>
 
-      {/* User Type Selector */}
-      <div className="flex gap-4 mb-10 p-1 bg-[#F5F4F1] rounded-sm">
-        <button
-          onClick={() => setUsername("admin")}
-          disabled={loading}
-          className={`flex items-center gap-2 px-6 py-3 rounded-sm transition-all duration-300 ${
-            username === "admin"
-              ? "bg-white shadow-sm text-[#1A1A1A]"
-              : "text-[#A19E95] hover:text-[#1A1A1A]"
-          }`}
-        >
-          <User size={14} strokeWidth={1.5} />
-          <span className="text-[10px] font-bold tracking-[0.2em] uppercase">
-            Admin
-          </span>
-        </button>
-        <button
-          onClick={() => setUsername("owner")}
-          disabled={loading}
-          className={`flex items-center gap-2 px-6 py-3 rounded-sm transition-all duration-300 ${
-            username === "owner"
-              ? "bg-white shadow-sm text-[#1A1A1A]"
-              : "text-[#A19E95] hover:text-[#1A1A1A]"
-          }`}
-        >
-          <User size={14} strokeWidth={1.5} />
-          <span className="text-[10px] font-bold tracking-[0.2em] uppercase">
-            Owner
-          </span>
-        </button>
+      {/* Username Input */}
+      <div className="w-full mb-10 px-8">
+        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#A19E95] block mb-3 text-center">
+          Masukkan Username
+        </label>
+        <div className="relative">
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={loading}
+            className="w-full bg-[#F5F4F1] border-none rounded-sm py-3 px-12 text-center text-[#1A1A1A] font-medium focus:ring-1 focus:ring-[#C5A059] placeholder:text-gray-300"
+            placeholder="Username..."
+          />
+          <User
+            size={16}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A19E95]"
+          />
+        </div>
       </div>
 
       {/* PIN Dots */}
@@ -197,9 +180,6 @@ export function PinForm() {
       </div>
 
       {/* Hint */}
-      <p className="mt-10 text-[9px] text-[#A19E95] tracking-wider text-center">
-        Tekan <span className="font-bold">TAB</span> untuk ganti peran
-      </p>
     </div>
   );
 }

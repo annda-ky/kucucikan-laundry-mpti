@@ -58,6 +58,9 @@ export function PinForm() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (loading) return;
 
+      // Ignore if user is typing in an input field (Username)
+      if (document.activeElement?.tagName === "INPUT") return;
+
       // Number keys
       if (/^[0-9]$/.test(e.key)) {
         handleNumber(e.key);

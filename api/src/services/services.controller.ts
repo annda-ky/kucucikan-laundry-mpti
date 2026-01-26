@@ -21,7 +21,7 @@ import { Role } from '@prisma/client';
 export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
-  @Roles(Role.OWNER)
+  @Roles(Role.OWNER, Role.ADMIN)
   @Post()
   create(@Body() createServiceDto: CreateServiceDto) {
     return this.servicesService.create(createServiceDto);

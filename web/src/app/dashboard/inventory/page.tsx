@@ -1,5 +1,8 @@
 "use client";
 
+import { apiClient, getErrorMessage } from "@/lib/api-client";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+
 import { useState, useEffect } from "react";
 import {
   Boxes,
@@ -10,6 +13,7 @@ import {
   Loader2,
   X,
   Minus,
+  Trash2,
 } from "lucide-react";
 import { inventoryService } from "@/services/inventory.service";
 import type {
@@ -47,6 +51,66 @@ export default function InventoryPage() {
   );
 
   const lowStockItems = inventoryService.getLowStockItems(items);
+
+  // --- Modal State ---
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: "danger" | "warning" | "info";
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    variant: "info",
+    isLoading: false,
+  });
+
+  const closeConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleDelete = (id: number) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Hapus Item Inventory",
+      message:
+        "Apakah Anda yakin ingin menghapus item ini? Tindakan ini tidak dapat dibatalkan.",
+      variant: "danger",
+      isLoading: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isLoading: true }));
+        try {
+          await inventoryService.delete(id);
+          closeConfirmModal();
+          fetchItems();
+          // Optional: Toast success here if needed, but fetchItems updates UI
+        } catch (error) {
+          console.error("Error deleting item:", error);
+          // Show error in a new modal state or via toast.
+          // For now, let's close the confirm modal and show an error modal or reuse logic?
+          // Simplest is to update the confirm modal to show error or close it and show alert (the user said no alert).
+          // Better: Close confirm, and show Error via Alert/Toast (User uses react-hot-toast elsewhere? No, inventory page doesn't seem to import it yet. Users page does.)
+          // Let's import toast or show error in modal?
+          // Since user requested custom alert even for errors, let's change message.
+
+          setConfirmModal({
+            isOpen: true,
+            title: "Gagal Menghapus",
+            message: getErrorMessage(error),
+            variant: "danger",
+            isLoading: false,
+            onConfirm: closeConfirmModal, // Close on OK
+            confirmLabel: "Tutup",
+            cancelLabel: "", // Hide cancel
+          } as any);
+        }
+      },
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -119,7 +183,7 @@ export default function InventoryPage() {
             return (
               <div
                 key={item.id}
-                className="p-6 bg-white border border-[#F0EDE4] rounded-sm hover:border-[#C5A059]/50 transition-all"
+                className="p-6 bg-white border border-[#F0EDE4] rounded-sm hover:border-[#C5A059]/50 transition-all group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -133,11 +197,20 @@ export default function InventoryPage() {
                       <p className="text-[10px] text-[#A19E95]">{item.unit}</p>
                     </div>
                   </div>
-                  <span
-                    className={`px-2 py-1 text-[9px] font-bold rounded ${status.color}`}
-                  >
-                    {status.label}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`px-2 py-1 text-[9px] font-bold rounded ${status.color}`}
+                    >
+                      {status.label}
+                    </span>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="text-red-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Hapus Item"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between mb-4">

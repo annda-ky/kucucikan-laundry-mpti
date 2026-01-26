@@ -16,6 +16,7 @@ import {
   MapPin,
   WashingMachine,
   Trash2,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { orderService } from "@/services/order.service";
@@ -562,21 +563,32 @@ function ReceiptModal({
       <head>
         <title>Struk - ${order.invoiceNumber}</title>
         <style>
-          body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
-          .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-          .header h1 { font-size: 18px; margin: 0; }
-          .header p { font-size: 12px; margin: 5px 0; color: #666; }
-          .info { margin: 10px 0; font-size: 12px; }
-          .info div { display: flex; justify-content: space-between; margin: 3px 0; }
-          .items { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0; margin: 10px 0; }
-          .item { font-size: 12px; margin: 5px 0; }
+          @page { margin: 0; }
+          body { 
+            font-family: 'Courier New', monospace; 
+            margin: 0; 
+            padding: 5px; 
+            width: 58mm; /* Ukuran kertas 58mm */
+            font-size: 10px; /* Font lebih kecil */
+            color: #000;
+          }
+          .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+          .header h1 { font-size: 14px; margin: 0; font-weight: bold; }
+          .header p { font-size: 9px; margin: 2px 0; }
+          
+          .info { margin: 5px 0; font-size: 9px; }
+          .info div { display: flex; justify-content: space-between; margin: 2px 0; }
+          
+          .items { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; margin: 5px 0; }
+          .item { font-size: 9px; margin: 3px 0; }
           .item-name { font-weight: bold; }
-          .item-detail { display: flex; justify-content: space-between; color: #666; }
-          .total { font-size: 14px; font-weight: bold; display: flex; justify-content: space-between; margin: 10px 0; }
-          .footer { text-align: center; font-size: 11px; color: #666; margin-top: 20px; border-top: 1px dashed #000; padding-top: 10px; }
-          .status { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; }
-          .paid { background: #d1fae5; color: #047857; }
-          .unpaid { background: #fee2e2; color: #dc2626; }
+          .item-detail { display: flex; justify-content: space-between; }
+          
+          .total { font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; margin: 5px 0; }
+          
+          .footer { text-align: center; font-size: 9px; margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; }
+          
+          .status { display: inline-block; padding: 2px 6px; border: 1px solid #000; border-radius: 3px; font-size: 9px; font-weight: bold; margin-top: 5px; }
         </style>
       </head>
       <body>
@@ -610,24 +622,46 @@ function ReceiptModal({
             .join("")}
         </div>
 
-        <div class="total">
-          <span>TOTAL</span>
+        <div class="total" style="border-bottom: none; margin-bottom: 2px;">
+          <span>SUBTOTAL</span>
           <span>Rp ${Number(order.totalAmount).toLocaleString("id-ID")}</span>
         </div>
 
         ${
+          order.discountAmount && order.discountAmount > 0
+            ? `
+          <div class="total" style="font-weight: normal; font-size: 9px; margin: 0;">
+            <span>Diskon (${order.promo?.code || "PROMO"})</span>
+            <span>- Rp ${Number(order.discountAmount).toLocaleString("id-ID")}</span>
+          </div>
+          <div class="total" style="border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px;">
+            <span>TOTAL TAGIHAN</span>
+            <span>Rp ${Number(order.totalAmount - order.discountAmount).toLocaleString("id-ID")}</span>
+          </div>
+          `
+            : `
+          <div class="total" style="border-top: none; margin-top: 0;">
+            <span>TOTAL</span>
+            <span>Rp ${Number(order.totalAmount).toLocaleString("id-ID")}</span>
+          </div>
+          `
+        }
+
+        ${
           order.paidAmount > 0
             ? `
-          <div class="info">
+          <div class="info" style="margin-top: 5px;">
             <div><span>Dibayar:</span><span>Rp ${Number(order.paidAmount).toLocaleString("id-ID")}</span></div>
-            <div><span>Kembalian:</span><span>Rp ${Number(order.changeAmount || 0).toLocaleString("id-ID")}</span></div>
+            <div><span>Kembalian:</span><span>Rp ${Number(
+              order.changeAmount || 0,
+            ).toLocaleString("id-ID")}</span></div>
           </div>
         `
             : ""
         }
 
-        <div style="text-align: center; margin: 15px 0;">
-          <span class="status ${order.statusPayment === "PAID" ? "paid" : "unpaid"}">
+        <div style="text-align: center; margin: 10px 0;">
+          <span class="status">
             ${order.statusPayment === "PAID" ? "LUNAS" : "BELUM LUNAS"}
           </span>
         </div>
@@ -646,6 +680,34 @@ function ReceiptModal({
     printWindow.document.close();
   };
 
+  const handleSendWA = () => {
+    if (!order.customer?.phone) {
+      toast.error("Nomor HP pelanggan tidak tersedia");
+      return;
+    }
+
+    let phone = order.customer.phone.replace(/\D/g, "");
+    if (phone.startsWith("0")) {
+      phone = "62" + phone.slice(1);
+    }
+
+    const message = `Halo ${order.customer.name},
+    
+Terima kasih telah menggunakan jasa KUCUCIKAN.
+Berikut adalah detail transaksi Anda:
+
+No. Invoice: *${order.invoiceNumber}*
+Total: *Rp ${Number(order.totalAmount - (order.discountAmount || 0)).toLocaleString("id-ID")}*
+Status: *${order.statusPayment === "PAID" ? "LUNAS ✅" : "BELUM LUNAS ❌"}*
+
+Terima kasih!`;
+
+    window.open(
+      `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+      "_blank",
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
       <div className="w-full max-w-md bg-white rounded-sm shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -657,6 +719,13 @@ function ReceiptModal({
             <p className="text-[10px] text-[#A19E95]">{order.invoiceNumber}</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleSendWA}
+              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-sm transition-colors"
+              title="Kirim ke WhatsApp"
+            >
+              <MessageCircle size={18} />
+            </button>
             <button
               onClick={handlePrint}
               className="p-2 text-[#C5A059] hover:bg-[#FAF9F6] rounded-sm transition-colors"

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma.service';
@@ -53,17 +53,14 @@ export class UsersService {
 
   async remove(id: string) {
     try {
-      // Coba Hard Delete dulu (untuk user typo/test yg belum ada transaksi)
       return await this.prisma.user.delete({
         where: { id },
       });
     } catch (error) {
-      // P2003 = Foreign Key Constraint failed (artinya user sudah punya data relasi)
       if (error.code === 'P2003') {
-        return this.prisma.user.update({
-          where: { id },
-          data: { isActive: false },
-        });
+        throw new BadRequestException(
+          'User tidak bisa dihapus karena memiliki riwayat transaksi/laporan. Silakan nonaktifkan user sebagai gantinya.',
+        );
       }
       throw error;
     }

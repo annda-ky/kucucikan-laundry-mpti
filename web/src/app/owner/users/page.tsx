@@ -12,6 +12,7 @@ import {
   X,
   Loader2,
   RotateCcw,
+  Ban,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -20,6 +21,7 @@ import {
   type UpdateUserDto,
 } from "@/services/user.service";
 import type { User, Role } from "@/types";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -47,17 +49,81 @@ export default function UserManagementPage() {
     user.username.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const handleDelete = async (id: string, username: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menonaktifkan user "${username}"?`))
-      return;
-    try {
-      await userService.delete(id);
-      toast.success(`User "${username}" berhasil dinonaktifkan`);
-      fetchUsers();
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error("Gagal menghapus user");
-    }
+  // --- Modal State ---
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: "danger" | "warning" | "info";
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    variant: "info",
+    isLoading: false,
+  });
+
+  const closeConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleDelete = (id: string, username: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Hapus User Permanen",
+      message: `Apakah Anda yakin ingin menghapus user "${username}" selamanya? Tindakan ini tidak dapat dibatalkan.`,
+      variant: "danger",
+      isLoading: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isLoading: true }));
+        try {
+          await userService.delete(id);
+          toast.success(`User "${username}" berhasil dihapus permanen`);
+          closeConfirmModal();
+          fetchUsers();
+        } catch (error: any) {
+          console.error("Error deleting user:", error);
+          const msg = error.response?.data?.message || "Gagal menghapus user";
+
+          setConfirmModal({
+            isOpen: true,
+            title: "Gagal Menghapus",
+            message: msg,
+            variant: "danger",
+            isLoading: false,
+            onConfirm: closeConfirmModal,
+            confirmLabel: "Tutup",
+            cancelLabel: "",
+          } as any);
+        }
+      },
+    });
+  };
+
+  const handleDeactivate = (id: string, username: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Nonaktifkan User",
+      message: `Apakah Anda yakin ingin menonaktifkan user "${username}"? User tidak akan bisa login.`,
+      variant: "warning",
+      isLoading: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isLoading: true }));
+        try {
+          await userService.update(id, { isActive: false });
+          toast.success(`User "${username}" berhasil dinonaktifkan`);
+          closeConfirmModal();
+          fetchUsers();
+        } catch (error) {
+          console.error("Error deactivating user:", error);
+          toast.error("Gagal menonaktifkan user");
+          closeConfirmModal();
+        }
+      },
+    });
   };
 
   const handleReactivate = async (id: string) => {
@@ -215,21 +281,29 @@ export default function UserManagementPage() {
                     </button>
                     {user.isActive ? (
                       <button
-                        onClick={() => handleDelete(user.id, user.username)}
-                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-sm transition-colors"
-                        title="Deactivate"
+                        onClick={() => handleDeactivate(user.id, user.username)}
+                        className="p-2 text-amber-500 hover:bg-amber-500/10 rounded-sm transition-colors"
+                        title="Nonaktifkan (Deactivate)"
                       >
-                        <Trash2 size={14} />
+                        <Ban size={14} />
                       </button>
                     ) : (
                       <button
                         onClick={() => handleReactivate(user.id)}
                         className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-sm transition-colors"
-                        title="Reactivate"
+                        title="Aktifkan Kembali"
                       >
                         <RotateCcw size={14} />
                       </button>
                     )}
+
+                    <button
+                      onClick={() => handleDelete(user.id, user.username)}
+                      className="p-2 text-red-500 hover:bg-red-500/10 rounded-sm transition-colors"
+                      title="Hapus Permanen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -262,6 +336,19 @@ export default function UserManagementPage() {
           }}
         />
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        isLoading={confirmModal.isLoading}
+        confirmLabel={(confirmModal as any).confirmLabel}
+        cancelLabel={(confirmModal as any).cancelLabel}
+      />
     </div>
   );
 }

@@ -279,17 +279,25 @@ export class OrdersService {
     });
   }
 
-  findAll() {
-    return this.prisma.order.findMany({
-      include: {
-        customer: true,
-        cashier: true,
-        orderItems: true,
-        machine: true,
-        promo: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll() {
+    try {
+      console.log('[DEBUG] Fetching all orders...');
+      const orders = await this.prisma.order.findMany({
+        include: {
+          customer: true,
+          cashier: true,
+          orderItems: true,
+          machine: true,
+          promo: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      console.log(`[DEBUG] Found ${orders.length} orders`);
+      return orders;
+    } catch (error) {
+      console.error('[DEBUG] Error fetching orders:', error);
+      throw error;
+    }
   }
 
   findOne(id: string) {

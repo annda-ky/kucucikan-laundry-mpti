@@ -205,10 +205,10 @@ export default function InventoryPage() {
                     </span>
                     <button
                       onClick={() => handleDelete(item.id)}
-                      className="text-red-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-sm transition-colors"
                       title="Hapus Item"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </div>

@@ -15,6 +15,7 @@ import {
   Minus,
   Trash2,
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { inventoryService } from "@/services/inventory.service";
 import type {
   InventoryItem,
@@ -85,9 +86,9 @@ export default function InventoryPage() {
         setConfirmModal((prev) => ({ ...prev, isLoading: true }));
         try {
           await inventoryService.delete(id);
+          toast.success("Item berhasil dihapus");
           closeConfirmModal();
           fetchItems();
-          // Optional: Toast success here if needed, but fetchItems updates UI
         } catch (error) {
           console.error("Error deleting item:", error);
           // Show error in a new modal state or via toast.
@@ -290,6 +291,19 @@ export default function InventoryPage() {
           }}
         />
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        isLoading={confirmModal.isLoading}
+        confirmLabel={(confirmModal as any).confirmLabel}
+        cancelLabel={(confirmModal as any).cancelLabel}
+      />
     </div>
   );
 }

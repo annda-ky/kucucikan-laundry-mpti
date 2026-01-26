@@ -19,6 +19,7 @@ export class InventoryService {
 
   findAll() {
     return this.prisma.inventoryItem.findMany({
+      where: { isDeleted: false },
       orderBy: { name: 'asc' },
     });
   }
@@ -77,20 +78,13 @@ export class InventoryService {
 
   async remove(id: number) {
     try {
-      return await this.prisma.inventoryItem.delete({
+      console.log(`[DEBUG] Attempting SOFT DELETE for item ID: ${id}`);
+      return await this.prisma.inventoryItem.update({
         where: { id },
+        data: { isDeleted: true },
       });
     } catch (error) {
       console.error('DELETE ERROR:', error);
-
-      // Check for Prisma Foreign Key Constraint (P2003)
-      if (error.code === 'P2003') {
-        throw new BadRequestException(
-          'Gagal menghapus item: Item ini sudah memiliki riwayat transaksi atau digunakan dalam pengeluaran. Harap hapus riwayat terkait terlebih dahulu.',
-        );
-      }
-
-      // Fallback for other errors: Return the actual error message for debugging
       throw new BadRequestException(
         `Gagal menghapus item: ${error.message || 'Terjadi kesalahan internal'}`,
       );

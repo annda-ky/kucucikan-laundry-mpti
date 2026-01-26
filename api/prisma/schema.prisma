@@ -232,6 +232,7 @@ model InventoryItem {
   unit          String
   stockQuantity Int    @default(0) @map("stock_quantity")
   minStockAlert Int    @default(1) @map("min_stock_alert")
+  isDeleted     Boolean @default(false) @map("is_deleted")
 
   expenses      Expense[]
   inventoryLogs InventoryLog[]

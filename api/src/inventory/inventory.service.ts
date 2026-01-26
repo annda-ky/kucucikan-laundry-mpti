@@ -78,13 +78,11 @@ export class InventoryService {
 
   async remove(id: number) {
     try {
-      console.log(`[DEBUG] Attempting SOFT DELETE for item ID: ${id}`);
       return await this.prisma.inventoryItem.update({
         where: { id },
         data: { isDeleted: true },
       });
     } catch (error) {
-      console.error('DELETE ERROR:', error);
       throw new BadRequestException(
         `Gagal menghapus item: ${error.message || 'Terjadi kesalahan internal'}`,
       );

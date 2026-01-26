@@ -203,7 +203,8 @@ export default function UserManagementPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-sm overflow-hidden">
+      {/* Users List - Desktop Table */}
+      <div className="hidden md:block bg-[#1A1A1A] border border-[#2A2A2A] rounded-sm overflow-hidden">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#2A2A2A] bg-[#0F0F0F]">
@@ -310,6 +311,87 @@ export default function UserManagementPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Users List - Mobile Card View */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {filteredUsers.map((user) => (
+          <div
+            key={user.id}
+            className="p-4 bg-[#1A1A1A] border border-[#2A2A2A] rounded-sm space-y-4"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                    user.role === "OWNER"
+                      ? "bg-[#C5A059] text-white"
+                      : "bg-[#2A2A2A] text-[#808080]"
+                  }`}
+                >
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-medium text-white">{user.username}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase ${
+                        user.role === "OWNER"
+                          ? "bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/20"
+                          : "bg-[#2A2A2A] text-[#A19E95] border border-[#3A3A3A]"
+                      }`}
+                    >
+                      {user.role === "OWNER" && <Shield size={8} />}
+                      {user.role}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span
+                className={`text-[10px] font-bold uppercase tracking-wider ${
+                  user.isActive ? "text-emerald-500" : "text-red-500"
+                }`}
+              >
+                {user.isActive ? "Active" : "Inactive"}
+              </span>
+            </div>
+
+            <div className="pt-3 border-t border-[#2A2A2A] flex items-center justify-between">
+              <span className="text-[10px] text-[#808080]">
+                {new Date(user.createdAt).toLocaleDateString()}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditingUser(user)}
+                  className="p-2 text-[#808080] hover:text-white bg-[#2A2A2A] rounded-sm transition-colors"
+                >
+                  <Edit size={14} />
+                </button>
+                {user.isActive ? (
+                  <button
+                    onClick={() => handleDeactivate(user.id, user.username)}
+                    className="p-2 text-amber-500 bg-[#2A2A2A] rounded-sm transition-colors"
+                  >
+                    <Ban size={14} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleReactivate(user.id)}
+                    className="p-2 text-emerald-500 bg-[#2A2A2A] rounded-sm transition-colors"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(user.id, user.username)}
+                  className="p-2 text-red-500 bg-[#2A2A2A] rounded-sm transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Create Modal */}

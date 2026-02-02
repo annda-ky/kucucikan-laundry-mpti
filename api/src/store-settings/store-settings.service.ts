@@ -36,4 +36,15 @@ export class StoreSettingsService {
       return acc;
     }, {});
   }
+
+  async bulkUpsert(settings: Record<string, string>) {
+    const promises = Object.entries(settings).map(([key, value]) =>
+      this.prisma.storeSetting.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value },
+      }),
+    );
+    return Promise.all(promises);
+  }
 }

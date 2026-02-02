@@ -57,6 +57,36 @@ export default function OrdersPage() {
       order.customer?.phone?.includes(searchQuery),
   );
 
+  const handleWhatsApp = (order: Order) => {
+    if (!order.customer?.phone) {
+      toast.error("Nomor HP pelanggan tidak tersedia");
+      return;
+    }
+
+    let phone = order.customer.phone.replace(/\D/g, "");
+    if (phone.startsWith("0")) {
+      phone = "62" + phone.slice(1);
+    }
+
+    const isDone =
+      order.statusLaundry === "DONE" || order.statusLaundry === "PICKED_UP";
+    const isPaid = order.statusPayment === "PAID";
+    const total = order.totalAmount - (order.discountAmount || 0);
+
+    let message = "";
+
+    if (isDone) {
+      message = `Halo Kak *${order.customer.name}*,\n\nKabar gembira! Laundry Anda di *Kucucikan* sudah SELESAI dan siap diambil.\n\nNo. Invoice: *${order.invoiceNumber}*\nTotal: *Rp ${Number(total).toLocaleString("id-ID")}*\nInfo: *${isPaid ? "LUNAS" : "BELUM LUNAS"}*\n\nSilakan datang ke outlet kami untuk pengambilan. Terima kasih sudah mempercayakan pakaian Anda pada kami!`;
+    } else {
+      message = `Halo Kak *${order.customer.name}*,\n\nTerima kasih telah mencuci di *Kucucikan*.\n\nLaundry Anda dengan No. Invoice: *${order.invoiceNumber}* sedang kami proses dengan sepenuh hati.\n\nKami akan kabari lagi jika sudah selesai. Terima kasih!`;
+    }
+
+    window.open(
+      `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+      "_blank",
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -216,6 +246,15 @@ export default function OrdersPage() {
                             <Trash2 size={16} />
                           </button>
                         )}
+                        {/* WhatsApp Button */}
+                        <button
+                          onClick={() => handleWhatsApp(order)}
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-sm transition-colors"
+                          title="Hubungi Pelanggan"
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+
                         {order.statusPayment !== "PAID" &&
                           order.statusPayment !== "VOID" && (
                             <button
@@ -223,7 +262,7 @@ export default function OrdersPage() {
                                 setSelectedOrder(order);
                                 setShowPayModal(true);
                               }}
-                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-sm transition-colors"
+                              className="p-2 text-[#C5A059] hover:bg-[#FAF9F6] rounded-sm transition-colors"
                               title="Bayar"
                             >
                               <DollarSign size={16} />
@@ -234,7 +273,7 @@ export default function OrdersPage() {
                             setSelectedOrder(order);
                             setShowReceiptModal(true);
                           }}
-                          className="p-2 text-[#A19E95] hover:text-[#C5A059] hover:bg-[#FAF9F6] rounded-sm transition-colors"
+                          className="p-2 text-[#A19E95] hover:text-[#1A1A1A] hover:bg-[#FAF9F6] rounded-sm transition-colors"
                           title="Lihat Struk"
                         >
                           <Eye size={16} />

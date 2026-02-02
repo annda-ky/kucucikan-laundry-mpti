@@ -17,6 +17,12 @@ export class StoreSettingsController {
     return this.storeSettingsService.upsert(UpdateStoreSettingDto);
   }
 
+  @Roles(Role.OWNER)
+  @Post('bulk')
+  updateBulk(@Body() settings: Record<string, string>) {
+    return this.storeSettingsService.bulkUpsert(settings);
+  }
+
   @Get()
   findAll() {
     return this.storeSettingsService.findAll();

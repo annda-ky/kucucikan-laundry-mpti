@@ -1,11 +1,46 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Settings, Save, ShieldAlert, LogOut } from "lucide-react";
 import { authService } from "@/services/auth.service";
+import { settingsService } from "@/services/settings.service";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 export default function OwnerSettingsPage() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState({
+    store_name: "",
+    store_address: "",
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const data = await settingsService.getAll();
+        setSettings({
+          store_name: data.store_name || "",
+          store_address: data.store_address || "",
+        });
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await settingsService.updateBulk(settings);
+      toast.success("Pengaturan berhasil disimpan");
+    } catch (error) {
+      toast.error("Gagal menyimpan pengaturan");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     authService.logout();
@@ -40,7 +75,11 @@ export default function OwnerSettingsPage() {
               </label>
               <input
                 type="text"
-                defaultValue="Kucucikan Laundry"
+                value={settings.store_name}
+                onChange={(e) =>
+                  setSettings({ ...settings, store_name: e.target.value })
+                }
+                placeholder="Nama Toko"
                 className="w-full px-4 py-3 bg-[#0F0F0F] border border-[#2A2A2A] rounded-sm text-sm text-white focus:border-[#C5A059] outline-none"
               />
             </div>
@@ -49,16 +88,24 @@ export default function OwnerSettingsPage() {
                 Alamat
               </label>
               <textarea
-                defaultValue="Jl. Contoh No. 123, Jakarta"
+                value={settings.store_address}
+                onChange={(e) =>
+                  setSettings({ ...settings, store_address: e.target.value })
+                }
+                placeholder="Alamat Lengkap"
                 rows={3}
                 className="w-full px-4 py-3 bg-[#0F0F0F] border border-[#2A2A2A] rounded-sm text-sm text-white focus:border-[#C5A059] outline-none"
               />
             </div>
           </div>
           <div className="mt-6 pt-6 border-t border-[#2A2A2A]">
-            <button className="flex items-center gap-2 px-6 py-3 bg-[#C5A059] text-[#0F0F0F] text-[10px] font-bold tracking-[0.15em] uppercase rounded-sm hover:bg-[#D4AF6A] transition-colors">
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className="flex items-center gap-2 px-6 py-3 bg-[#C5A059] text-[#0F0F0F] text-[10px] font-bold tracking-[0.15em] uppercase rounded-sm hover:bg-[#D4AF6A] transition-colors disabled:opacity-50"
+            >
               <Save size={14} />
-              SIMPAN PERUBAHAN
+              {loading ? "MENYIMPAN..." : "SIMPAN PERUBAHAN"}
             </button>
           </div>
         </div>

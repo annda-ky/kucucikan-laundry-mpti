@@ -48,7 +48,7 @@ export default function OwnerDashboardPage() {
           await Promise.all([
             reportService.getDashboard(),
             machineService.getAll(),
-            orderService.getAll(),
+            orderService.getAll(1, 100).then((res) => res.data), // Extract data array
             customerService.getLeaderboard("totalSpend"),
           ]);
         setSummary(summaryData);

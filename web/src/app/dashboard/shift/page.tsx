@@ -50,7 +50,8 @@ export default function ShiftPage() {
 
   const fetchShiftData = async () => {
     try {
-      const shifts = await shiftService.getAll();
+      const response = await shiftService.getAll();
+      const shifts = response.data;
       // Find active shift (no endTime)
       const active = shifts.find((s) => !s.endTime);
       setCurrentShift(active || null);

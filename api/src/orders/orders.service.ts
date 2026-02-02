@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma.service';
 import * as bcrypt from 'bcrypt';
 
 import { PromosService } from '../promos/promos.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
@@ -32,7 +33,7 @@ export class OrdersService {
 
     const { customerId, items, machineId, duration, note } = createOrderDto;
     const invoiceNumber = `INV-${Date.now()}`;
-    let totalAmount = 0;
+    let totalAmount = new Prisma.Decimal(0);
     const orderItemsData: any[] = [];
 
     for (const item of items) {
@@ -44,8 +45,9 @@ export class OrdersService {
         throw new NotFoundException(`Service ID ${item.serviceId} not found`);
       }
 
-      const subtotal = Number(service.price) * item.quantity;
-      totalAmount += subtotal;
+      // Fix Floating Point: Use Decimal
+      const subtotal = service.price.mul(item.quantity);
+      totalAmount = totalAmount.add(subtotal);
 
       orderItemsData.push({
         serviceId: service.id,
@@ -103,20 +105,20 @@ export class OrdersService {
       throw new BadRequestException('Order sudah lunas');
     }
 
-    const totalAmount = Number(order.totalAmount);
-    // Cast to any because Prisma Client might not be regenerated yet
-    const discountAmount = Number((order as any).discountAmount || 0);
-    const finalAmount = totalAmount - discountAmount;
+    // Use Decimal for precision
+    const totalAmount = order.totalAmount;
+    const discountAmount = order.discountAmount ?? new Prisma.Decimal(0);
+    const finalAmount = totalAmount.sub(discountAmount);
 
-    const paidAmount = payOrderDto.paidAmount;
+    const paidAmount = new Prisma.Decimal(payOrderDto.paidAmount);
 
-    if (paidAmount < finalAmount) {
+    if (paidAmount.lt(finalAmount)) {
       throw new BadRequestException(
         'Jumlah bayar kurang dari total tagihan (setelah diskon)',
       );
     }
 
-    const changeAmount = paidAmount - finalAmount;
+    const changeAmount = paidAmount.sub(finalAmount);
 
     return this.prisma.$transaction(async (tx) => {
       const updatedOrder = await tx.order.update({
@@ -265,7 +267,7 @@ export class OrdersService {
 
     const promo = await this.promosService.findByCode(code);
     const discountAmount = this.promosService.calculateDiscount(
-      Number(order.totalAmount),
+      order.totalAmount,
       promo,
     );
 

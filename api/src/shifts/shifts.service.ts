@@ -6,6 +6,7 @@ import {
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 import { PrismaService } from '../prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ShiftsService {
@@ -53,7 +54,8 @@ export class ShiftsService {
         paymentMethod: 'CASH',
       },
     });
-    const totalSales = Number(salesAggregation._sum.totalAmount || 0);
+    const totalSales =
+      salesAggregation._sum.totalAmount || new Prisma.Decimal(0);
 
     const expenseAggregation = await this.prisma.expense.aggregate({
       _sum: { amount: true },
@@ -61,12 +63,15 @@ export class ShiftsService {
         shiftId: activeShift.id,
       },
     });
-    const totalExpenses = Number(expenseAggregation._sum.amount || 0);
+    const totalExpenses =
+      expenseAggregation._sum.amount || new Prisma.Decimal(0);
 
-    const startCash = Number(activeShift.startCash);
-    const systemExpectedCash = startCash + totalSales - totalExpenses;
-    const actualCashClosing = updateShiftDto.actualCashClosing;
-    const difference = actualCashClosing - systemExpectedCash;
+    const startCash = activeShift.startCash;
+    const systemExpectedCash = startCash.add(totalSales).sub(totalExpenses);
+    const actualCashClosing = new Prisma.Decimal(
+      updateShiftDto.actualCashClosing,
+    );
+    const difference = actualCashClosing.sub(systemExpectedCash);
 
     const updatedShift = await this.prisma.shift.update({
       where: { id: activeShift.id },
@@ -112,7 +117,8 @@ export class ShiftsService {
         paymentMethod: 'CASH',
       },
     });
-    const totalSales = Number(salesAggregation._sum.totalAmount || 0);
+    const totalSales =
+      salesAggregation._sum.totalAmount || new Prisma.Decimal(0);
 
     const expenseAggregation = await this.prisma.expense.aggregate({
       _sum: { amount: true },
@@ -120,12 +126,15 @@ export class ShiftsService {
         shiftId: shift.id,
       },
     });
-    const totalExpenses = Number(expenseAggregation._sum.amount || 0);
+    const totalExpenses =
+      expenseAggregation._sum.amount || new Prisma.Decimal(0);
 
-    const startCash = Number(shift.startCash);
-    const systemExpectedCash = startCash + totalSales - totalExpenses;
-    const actualCashClosing = updateShiftDto.actualCashClosing;
-    const difference = actualCashClosing - systemExpectedCash;
+    const startCash = shift.startCash;
+    const systemExpectedCash = startCash.add(totalSales).sub(totalExpenses);
+    const actualCashClosing = new Prisma.Decimal(
+      updateShiftDto.actualCashClosing,
+    );
+    const difference = actualCashClosing.sub(systemExpectedCash);
 
     return this.prisma.shift.update({
       where: { id: shiftId },

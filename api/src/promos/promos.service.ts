@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreatePromoDto } from './dto/create-promo.dto';
 import { UpdatePromoDto } from './dto/update-promo.dto';
 
@@ -82,21 +83,28 @@ export class PromosService {
   }
 
   // Helper to calculate final Amount
-  calculateDiscount(originalAmount: number, promo: any): number {
-    if (!promo) return 0;
+  // Helper to calculate final Amount
+  calculateDiscount(
+    originalAmount: Prisma.Decimal,
+    promo: any,
+  ): Prisma.Decimal {
+    if (!promo) return new Prisma.Decimal(0);
 
     // Check validity
-    if (!promo.isActive) return 0;
-    if (promo.validUntil && new Date(promo.validUntil) < new Date()) return 0;
+    if (!promo.isActive) return new Prisma.Decimal(0);
+    if (promo.validUntil && new Date(promo.validUntil) < new Date())
+      return new Prisma.Decimal(0);
 
-    let discount = 0;
+    let discount = new Prisma.Decimal(0);
     if (promo.type === 'PERCENTAGE') {
-      discount = (originalAmount * Number(promo.value)) / 100;
+      discount = originalAmount.mul(promo.value).div(100);
     } else {
-      discount = Number(promo.value);
+      discount = promo.value;
     }
 
     // Max discount = originalAmount (Not negative)
-    return Math.min(Math.floor(discount), originalAmount);
+    if (discount.gt(originalAmount)) return originalAmount;
+
+    return discount.floor();
   }
 }

@@ -1,36 +1,38 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Waves, Delete, ArrowRight, Loader2, User } from "lucide-react";
+import { Waves, Loader2, User } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { authService } from "@/services/auth.service";
+import { PinInput } from "@ark-ui/react/pin-input";
 
 export function PinForm() {
-  const [pin, setPin] = useState("");
   const [username, setUsername] = useState("");
+  const [pinValue, setPinValue] = useState<string[]>(Array(6).fill(""));
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleNumber = (num: string) => {
-    if (pin.length < 6) {
-      setPin((prev) => prev + num);
-      setError(null);
-    }
-  };
+  const handleValueComplete = async (details: { valueAsString: string }) => {
+    const pin = details.valueAsString;
 
-  const handleSubmit = useCallback(async () => {
+    // 1. Validate PIN Length
     if (pin.length !== 6) return;
+
+    // 2. Validate Username
+    if (!username.trim()) {
+      toast.error("Mohon isi Username terlebih dahulu");
+      setPinValue(Array(6).fill("")); // Reset PIN
+      return;
+    }
+
     setLoading(true);
-    setError(null);
 
     try {
       const data = await authService.login({ username, pin });
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Redirect based on role
       toast.success(`Selamat datang, ${data.user.username}`);
       if (data.user.role === "OWNER") {
         router.push("/owner");
@@ -38,43 +40,13 @@ export function PinForm() {
         router.push("/dashboard");
       }
     } catch (err: any) {
-      setError("PIN salah");
       toast.error("PIN salah atau akun tidak ditemukan");
-      setPin("");
-      setTimeout(() => setError(null), 1000);
+      setPinValue(Array(6).fill("")); // Reset PIN on error
     } finally {
-      setLoading(false);
+      // Small delay to prevent jitter if user types fast
+      setTimeout(() => setLoading(false), 500);
     }
-  }, [pin, username, router]);
-
-  useEffect(() => {
-    if (pin.length === 6) {
-      handleSubmit();
-    }
-  }, [pin, handleSubmit]);
-
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (loading) return;
-
-      // Ignore if user is typing in an input field (Username)
-      if (document.activeElement?.tagName === "INPUT") return;
-
-      // Number keys
-      if (/^[0-9]$/.test(e.key)) {
-        handleNumber(e.key);
-      }
-      // Backspace
-      if (e.key === "Backspace") {
-        setPin((prev) => prev.slice(0, -1));
-      }
-      // Tab to switch user type
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [loading]);
+  };
 
   return (
     <div className="relative w-full max-w-sm flex flex-col items-center">
@@ -107,6 +79,7 @@ export function PinForm() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={loading}
+            autoFocus
             className="w-full bg-[#F5F4F1] border-none rounded-sm py-3 px-12 text-center text-[#1A1A1A] font-medium focus:ring-1 focus:ring-[#C5A059] placeholder:text-gray-300"
             placeholder="Username..."
           />
@@ -117,72 +90,36 @@ export function PinForm() {
         </div>
       </div>
 
-      {/* PIN Dots */}
-      <div className="flex justify-center gap-5 mb-12">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="relative flex items-center justify-center">
-            <div
-              className={`w-[8px] h-[8px] rounded-full transition-all duration-300 ${
-                error
-                  ? "bg-red-400"
-                  : pin.length > i
-                    ? "bg-[#C5A059] scale-125"
-                    : "bg-[#E5E2D9]"
-              }`}
+      {/* Ark UI Pin Input */}
+      <PinInput.Root
+        value={pinValue}
+        onValueChange={(details) => setPinValue(details.value)}
+        onValueComplete={handleValueComplete}
+        className="flex flex-col items-center gap-6 w-full"
+        disabled={loading}
+        otp
+        mask
+        blurOnComplete
+      >
+        <PinInput.Label className="sr-only">Enter PIN</PinInput.Label>
+        <PinInput.Control className="flex gap-3">
+          {[0, 1, 2, 3, 4, 5].map((id, index) => (
+            <PinInput.Input
+              key={id}
+              index={index}
+              className="w-12 h-12 text-center text-lg font-medium border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059] transition-all disabled:opacity-50"
             />
-            {pin.length === i && !loading && (
-              <div className="absolute -bottom-3 w-4 h-[1px] bg-[#C5A059]/50 animate-pulse" />
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </PinInput.Control>
+        <PinInput.HiddenInput />
+      </PinInput.Root>
 
-      {/* Number Pad */}
-      <div className="grid grid-cols-3 gap-x-8 gap-y-4 w-full">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-          <button
-            key={num}
-            onClick={() => handleNumber(num.toString())}
-            disabled={loading}
-            className="group flex h-16 items-center justify-center text-xl font-light text-[#1A1A1A] transition-all hover:text-[#C5A059] disabled:opacity-20 active:scale-95"
-          >
-            <span className="relative">
-              {num}
-              <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-[#C5A059] transition-all group-hover:w-full" />
-            </span>
-          </button>
-        ))}
-        <button
-          onClick={() => setPin(pin.slice(0, -1))}
-          disabled={loading}
-          className="flex h-16 items-center justify-center text-[#A19E95] hover:text-[#1A1A1A] transition-colors active:scale-95"
-        >
-          <Delete size={18} strokeWidth={1.2} />
-        </button>
-        <button
-          onClick={() => handleNumber("0")}
-          disabled={loading}
-          className="group flex h-16 items-center justify-center text-xl font-light text-[#1A1A1A] transition-all hover:text-[#C5A059] active:scale-95"
-        >
-          <span className="relative">
-            0
-            <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-[#C5A059] transition-all group-hover:w-full" />
-          </span>
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={pin.length !== 6 || loading}
-          className="flex h-16 items-center justify-center text-[#C5A059] disabled:text-[#E5E2D9] transition-all hover:scale-110 active:scale-95"
-        >
-          {loading ? (
-            <Loader2 size={20} className="animate-spin" />
-          ) : (
-            <ArrowRight size={20} strokeWidth={1.2} />
-          )}
-        </button>
-      </div>
-
-      {/* Hint */}
+      {/* Loading Indicator */}
+      {loading && (
+        <div className="mt-8 text-[#C5A059] flex items-center gap-2 animate-pulse">
+          <Loader2 size={20} className="animate-spin" /> Verifying...
+        </div>
+      )}
     </div>
   );
 }

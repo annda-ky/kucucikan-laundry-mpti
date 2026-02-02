@@ -279,21 +279,35 @@ export class OrdersService {
     });
   }
 
-  async findAll() {
+  async findAll(page: number = 1, limit: number = 10) {
     try {
-      console.log('[DEBUG] Fetching all orders...');
-      const orders = await this.prisma.order.findMany({
-        include: {
-          customer: true,
-          cashier: true,
-          orderItems: true,
-          machine: true,
-          promo: true,
+      const skip = (page - 1) * limit;
+
+      const [orders, total] = await Promise.all([
+        this.prisma.order.findMany({
+          skip,
+          take: limit,
+          include: {
+            customer: true,
+            cashier: true,
+            orderItems: true,
+            machine: true,
+            promo: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.order.count(),
+      ]);
+
+      return {
+        data: orders,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
         },
-        orderBy: { createdAt: 'desc' },
-      });
-      console.log(`[DEBUG] Found ${orders.length} orders`);
-      return orders;
+      };
     } catch (error) {
       console.error('[DEBUG] Error fetching orders:', error);
       throw error;

@@ -33,33 +33,55 @@ export default function OwnerReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [finance, setFinance] = useState<FinanceSummary | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [shiftMeta, setShiftMeta] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+  });
+  const [shiftPage, setShiftPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
   const [dateRange, setDateRange] = useState({
     startDate: new Date().toISOString().split("T")[0].slice(0, 7) + "-01", // First day of current month
     endDate: new Date().toISOString().split("T")[0], // Today
   });
 
+  // Fetch Finance Data when Date Range changes
   useEffect(() => {
-    fetchData();
-  }, [dateRange]); // Refetch when dates change
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      // Only fetch finance with dates when in OVERVIEW mode
-      const [financeData, shiftsData] = await Promise.all([
-        reportService.getFinanceSummary(dateRange.startDate, dateRange.endDate),
-        shiftService.getAll(),
-      ]);
-      setFinance(financeData);
-      setShifts(shiftsData);
-    } catch (error) {
-      console.error("Failed to fetch report data:", error);
-      toast.error("Gagal memuat laporan. Silakan coba lagi.");
-    } finally {
-      setIsLoading(false);
+    const fetchFinance = async () => {
+      try {
+        setIsLoading(true);
+        const data = await reportService.getFinanceSummary(
+          dateRange.startDate,
+          dateRange.endDate,
+        );
+        setFinance(data);
+      } catch (error) {
+        console.error("Failed to fetch finance data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (activeTab === "OVERVIEW") {
+      fetchFinance();
     }
-  };
+  }, [dateRange, activeTab]);
+
+  // Fetch Shifts when Shift Page changes
+  useEffect(() => {
+    const fetchShifts = async () => {
+      try {
+        const response = await shiftService.getAll(shiftPage, 10);
+        setShifts(response.data);
+        setShiftMeta(response.meta);
+      } catch (error) {
+        console.error("Failed to fetch shifts:", error);
+      }
+    };
+    if (activeTab === "AUDIT") {
+      fetchShifts();
+    }
+  }, [shiftPage, activeTab]);
 
   const handleExport = async () => {
     try {
@@ -78,7 +100,7 @@ export default function OwnerReportsPage() {
     }
   };
 
-  if (isLoading && !finance) {
+  if (activeTab === "OVERVIEW" && isLoading && !finance) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 text-[#C5A059] animate-spin" />
@@ -98,7 +120,7 @@ export default function OwnerReportsPage() {
           <p className="text-[#808080] text-sm">
             {activeTab === "OVERVIEW"
               ? `Laporan Keuangan: ${finance?.period || "Loading..."}`
-              : "Audit selisih tutup kasir (Blind Closing)"}
+              : `Audit Shift (Page ${shiftMeta.page} of ${shiftMeta.totalPages})`}
           </p>
         </div>
 
@@ -169,7 +191,11 @@ export default function OwnerReportsPage() {
       {activeTab === "OVERVIEW" ? (
         <FinancialOverview finance={finance} />
       ) : (
-        <ShiftAuditView shifts={shifts} />
+        <ShiftAuditView
+          shifts={shifts}
+          meta={shiftMeta}
+          onPageChange={setShiftPage}
+        />
       )}
     </div>
   );
@@ -413,9 +439,17 @@ function FinancialOverview({ finance }: { finance: FinanceSummary | null }) {
   );
 }
 
-function ShiftAuditView({ shifts }: { shifts: Shift[] }) {
+function ShiftAuditView({
+  shifts,
+  meta,
+  onPageChange,
+}: {
+  shifts: Shift[];
+  meta: any;
+  onPageChange: (page: number) => void;
+}) {
   // Filter only closed shifts
-  const closedShifts = shifts.filter((s) => s.endTime);
+  const closedShifts = shifts;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -428,7 +462,7 @@ function ShiftAuditView({ shifts }: { shifts: Shift[] }) {
         </div>
 
         {closedShifts.length > 0 ? (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-h-[300px]">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-[#2A2A2A] bg-[#0F0F0F]">
@@ -536,6 +570,31 @@ function ShiftAuditView({ shifts }: { shifts: Shift[] }) {
             Belum ada rekam jejak shift yang selesai.
           </div>
         )}
+
+        {/* Pagination Controls */}
+        <div className="px-6 py-4 border-t border-[#2A2A2A] flex items-center justify-between">
+          <span className="text-xs text-[#808080]">
+            Page {meta.page} of {meta.totalPages} ({meta.total} records)
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onPageChange(Math.max(1, meta.page - 1))}
+              disabled={meta.page === 1}
+              className="px-3 py-1.5 text-xs font-bold text-white bg-[#2A2A2A] rounded-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#3A3A3A] transition-colors"
+            >
+              PREV
+            </button>
+            <button
+              onClick={() =>
+                onPageChange(Math.min(meta.totalPages, meta.page + 1))
+              }
+              disabled={meta.page >= meta.totalPages}
+              className="px-3 py-1.5 text-xs font-bold text-[#0F0F0F] bg-[#C5A059] rounded-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#D5B069] transition-colors"
+            >
+              NEXT
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -138,11 +138,28 @@ export class ShiftsService {
     });
   }
 
-  findAll() {
-    return this.prisma.shift.findMany({
-      include: { cashier: true },
-      orderBy: { startTime: 'desc' },
-    });
+  async findAll(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+
+    const [shifts, total] = await Promise.all([
+      this.prisma.shift.findMany({
+        skip,
+        take: limit,
+        include: { cashier: true },
+        orderBy: { startTime: 'desc' },
+      }),
+      this.prisma.shift.count(),
+    ]);
+
+    return {
+      data: shifts,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   findOne(id: string) {

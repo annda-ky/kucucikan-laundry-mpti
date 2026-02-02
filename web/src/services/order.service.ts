@@ -6,14 +6,20 @@ import type {
   VoidOrderDto,
   StatusLaundry,
   PaymentStatus,
+  PaginatedResponse,
 } from "@/types";
 
 export const orderService = {
   /**
    * Get all orders
    */
-  getAll: async (): Promise<Order[]> => {
-    const response = await apiClient.get<Order[]>("/orders");
+  getAll: async (
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<PaginatedResponse<Order>> => {
+    const response = await apiClient.get<PaginatedResponse<Order>>(
+      `/orders?page=${page}&limit=${limit}`,
+    );
     return response.data;
   },
 

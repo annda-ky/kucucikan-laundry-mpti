@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { ShiftsService } from './shifts.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
@@ -37,8 +38,8 @@ export class ShiftsController {
   }
 
   @Get()
-  findAll() {
-    return this.shiftsService.findAll();
+  findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
+    return this.shiftsService.findAll(Number(page), Number(limit));
   }
 
   @Get(':id')

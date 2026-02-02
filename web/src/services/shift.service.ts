@@ -1,12 +1,22 @@
 import { apiClient } from "@/lib/api-client";
-import type { Shift, CreateShiftDto, UpdateShiftDto } from "@/types";
+import type {
+  Shift,
+  CreateShiftDto,
+  UpdateShiftDto,
+  PaginatedResponse,
+} from "@/types";
 
 export const shiftService = {
   /**
    * Get all shifts
    */
-  getAll: async (): Promise<Shift[]> => {
-    const response = await apiClient.get<Shift[]>("/shifts");
+  getAll: async (
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<PaginatedResponse<Shift>> => {
+    const response = await apiClient.get<PaginatedResponse<Shift>>(
+      `/shifts?page=${page}&limit=${limit}`,
+    );
     return response.data;
   },
 

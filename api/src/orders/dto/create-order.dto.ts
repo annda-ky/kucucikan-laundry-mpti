@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsNumber,
   Min,
+  ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -39,6 +40,7 @@ export class CreateOrderDto {
 
   @IsArray()
   @ValidateNested({ each: true })
+  @ArrayMinSize(1, { message: 'Order must contain at least one item' })
   @Type(() => OrderItemDto)
   items: OrderItemDto[];
 }

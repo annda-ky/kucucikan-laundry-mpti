@@ -36,33 +36,49 @@ export class InventoryService {
     updateStockDto: UpdateStockDto,
     actorId: string,
   ) {
-    const item = await this.prisma.inventoryItem.findUnique({
-      where: { id },
-    });
-
-    if (!item) {
-      throw new NotFoundException('Item not found');
-    }
-
-    // Checking if stock will be negative
-    if (item.stockQuantity + updateStockDto.changeAmount < 0) {
-      throw new NotFoundException(
-        `Stok tidak cukup. Stok saat ini: ${item.stockQuantity}`,
-      );
-    }
-
     return this.prisma.$transaction(async (tx) => {
-      // 1. Update Stok Barang
-      const updatedItem = await tx.inventoryItem.update({
-        where: { id },
-        data: {
-          stockQuantity: {
-            increment: updateStockDto.changeAmount,
+      // 1. Atomic Update (Prevent Race Condition)
+      if (updateStockDto.changeAmount < 0) {
+        const result = await tx.inventoryItem.updateMany({
+          where: {
+            id,
+            stockQuantity: {
+              gte: Math.abs(updateStockDto.changeAmount), // Check stock atomically
+            },
           },
-        },
-      });
+          data: {
+            stockQuantity: {
+              increment: updateStockDto.changeAmount,
+            },
+          },
+        });
 
-      // 2. Buat Log Riwayat
+        if (result.count === 0) {
+          // Determine if it was "Not Found" or "Insufficient Stock"
+          const item = await tx.inventoryItem.findUnique({ where: { id } });
+          if (!item) throw new NotFoundException('Item not found');
+          throw new BadRequestException(
+            `Stok tidak cukup. Transaksi dibatalkan.`,
+          );
+        }
+      } else {
+        // For additions, simple update is safe (no negative check needed)
+        // Check existence first
+        const item = await tx.inventoryItem.findUnique({ where: { id } });
+        if (!item) throw new NotFoundException('Item not found');
+
+        await tx.inventoryItem.update({
+          where: { id },
+          data: {
+            stockQuantity: { increment: updateStockDto.changeAmount },
+          },
+        });
+      }
+
+      // 2. Fetch Updated Item
+      const updatedItem = await tx.inventoryItem.findUnique({ where: { id } });
+
+      // 3. Create Log
       await tx.inventoryLog.create({
         data: {
           inventoryItemId: id,

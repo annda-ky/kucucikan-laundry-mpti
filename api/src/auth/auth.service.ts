@@ -35,7 +35,18 @@ export class AuthService {
       throw new UnauthorizedException('PIN Salah');
     }
 
-    const payload = { sub: user.id, username: user.username, role: user.role };
+    // Increment token version to invalidate old sessions
+    const updatedUser = await this.usersService.update(user.id, {
+      tokenVersion: (user.tokenVersion || 0) + 1,
+    });
+
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+      tokenVersion: updatedUser.tokenVersion,
+    };
+
     return {
       access_token: await this.jwtService.signAsync(payload),
       user: {

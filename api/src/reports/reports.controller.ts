@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Header, Res } from '@nestjs/common';
+import { Controller, Get, UseGuards, Header, Res, Query } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
@@ -18,8 +18,11 @@ export class ReportsController {
   }
 
   @Get('finance')
-  getFinance() {
-    return this.reportsService.getMonthlyFinanceSummary();
+  getFinance(@Query() query: { startDate?: string; endDate?: string }) {
+    return this.reportsService.getMonthlyFinanceSummary(
+      query.startDate,
+      query.endDate,
+    );
   }
 
   @Roles(Role.OWNER)
@@ -29,8 +32,14 @@ export class ReportsController {
     'Content-Disposition',
     'attachment; filename="laporan_laundry_2026.csv"',
   )
-  async export(@Res() res: Response) {
-    const csv = await this.reportsService.exportTransactions();
+  async export(
+    @Res() res: Response,
+    @Query() query: { startDate?: string; endDate?: string },
+  ) {
+    const csv = await this.reportsService.exportTransactions(
+      query.startDate,
+      query.endDate,
+    );
     return res.send(csv);
   }
 }

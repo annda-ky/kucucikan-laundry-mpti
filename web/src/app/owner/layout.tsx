@@ -88,7 +88,6 @@ export default function OwnerLayout({
       icon: Package,
       divider: true,
     },
-    { label: "FINANCE", href: "/owner/finance", icon: Wallet },
     {
       label: "INVENTORY",
       href: "/owner/inventory",

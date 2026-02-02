@@ -14,26 +14,46 @@ export const reportService = {
     return response.data.summary;
   },
 
-  getFinanceSummary: async (): Promise<any> => {
-    const response = await apiClient.get<any>("/reports/finance");
+  getFinanceSummary: async (
+    startDate?: string,
+    endDate?: string,
+  ): Promise<any> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
+    const response = await apiClient.get<any>(
+      `/reports/finance?${params.toString()}`,
+    );
     return response.data;
   },
 
   /**
    * Export transactions to CSV (FR-REP-03)
    */
-  exportCsv: async (): Promise<Blob> => {
-    const response = await apiClient.get("/reports/export", {
-      responseType: "blob",
-    });
+  exportCsv: async (startDate?: string, endDate?: string): Promise<Blob> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
+    const response = await apiClient.get(
+      `/reports/export?${params.toString()}`,
+      {
+        responseType: "blob",
+      },
+    );
     return response.data;
   },
 
   /**
    * Download exported file
    */
-  downloadExport: async (filename?: string): Promise<void> => {
-    const blob = await reportService.exportCsv();
+  downloadExport: async (
+    filename?: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<void> => {
+    const blob = await reportService.exportCsv(startDate, endDate);
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;

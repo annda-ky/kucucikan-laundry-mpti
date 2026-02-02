@@ -83,11 +83,20 @@ export class ReportsService {
     }
   }
 
-  async getMonthlyFinanceSummary() {
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    endOfMonth.setHours(23, 59, 59, 999);
+  async getMonthlyFinanceSummary(startDate?: string, endDate?: string) {
+    let start, end;
+
+    if (startDate && endDate) {
+      start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+    } else {
+      const today = new Date();
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      end.setHours(23, 59, 59, 999);
+    }
 
     try {
       const [
@@ -97,37 +106,37 @@ export class ReportsService {
         orders,
         expenses,
       ] = await Promise.all([
-        // Monthly Revenue Aggregation (Total)
+        // Revenue Aggregation (Total)
         this.prisma.order.aggregate({
           _sum: { totalAmount: true },
           where: {
-            createdAt: { gte: startOfMonth, lte: endOfMonth },
+            createdAt: { gte: start, lte: end },
             statusPayment: 'PAID',
           },
         }),
 
-        // Monthly Cash Revenue Aggregation
+        // Cash Revenue Aggregation
         this.prisma.order.aggregate({
           _sum: { totalAmount: true },
           where: {
-            createdAt: { gte: startOfMonth, lte: endOfMonth },
+            createdAt: { gte: start, lte: end },
             statusPayment: 'PAID',
             paymentMethod: 'CASH',
           },
         }),
 
-        // Monthly Expense Aggregation
+        // Expense Aggregation
         this.prisma.expense.aggregate({
           _sum: { amount: true },
           where: {
-            createdAt: { gte: startOfMonth, lte: endOfMonth },
+            createdAt: { gte: start, lte: end },
           },
         }),
 
         // Orders List (Incoming)
         this.prisma.order.findMany({
           where: {
-            createdAt: { gte: startOfMonth, lte: endOfMonth },
+            createdAt: { gte: start, lte: end },
             statusPayment: 'PAID',
           },
           select: {
@@ -142,7 +151,7 @@ export class ReportsService {
         // Expenses List (Outgoing)
         this.prisma.expense.findMany({
           where: {
-            createdAt: { gte: startOfMonth, lte: endOfMonth },
+            createdAt: { gte: start, lte: end },
           },
           select: {
             id: true,
@@ -182,10 +191,13 @@ export class ReportsService {
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       return {
-        period: startOfMonth.toLocaleString('default', {
-          month: 'long',
-          year: 'numeric',
-        }),
+        period:
+          startDate && endDate
+            ? `${startDate} - ${endDate}`
+            : start.toLocaleString('default', {
+                month: 'long',
+                year: 'numeric',
+              }),
         income,
         expense,
         netProfit,
@@ -201,8 +213,22 @@ export class ReportsService {
     }
   }
 
-  async exportTransactions() {
+  async exportTransactions(startDate?: string, endDate?: string) {
+    let whereClause = {};
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      whereClause = {
+        createdAt: { gte: start, lte: end },
+      };
+    }
+
     const transactions = await this.prisma.order.findMany({
+      where: whereClause,
       include: {
         customer: true,
         cashier: true,

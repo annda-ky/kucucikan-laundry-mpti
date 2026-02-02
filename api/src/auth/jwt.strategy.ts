@@ -23,6 +23,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User inactive or deleted');
     }
 
+    // Single Session Enforcement:
+    // If the token version in payload doesn't match the DB version,
+    // it means a new login has occurred elsewhere.
+    if (
+      payload.tokenVersion !== undefined &&
+      user.tokenVersion !== payload.tokenVersion
+    ) {
+      throw new UnauthorizedException(
+        'Session expired. Active on another device.',
+      );
+    }
+
     return {
       userId: payload.sub,
       username: payload.username,

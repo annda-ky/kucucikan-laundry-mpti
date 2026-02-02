@@ -79,6 +79,7 @@ model User {
   pin_hash  String
   role      Role     @default(ADMIN)
   isActive  Boolean  @default(true) @map("is_active")
+  tokenVersion Int      @default(0) @map("token_version")
   createdAt DateTime @default(now()) @map("created_at")
 
   orders        Order[]        @relation("CashierOrders")

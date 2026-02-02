@@ -3,6 +3,7 @@ import type {
   InventoryItem,
   CreateInventoryItemDto,
   UpdateStockDto,
+  InventoryLog,
 } from "@/types";
 
 export const inventoryService = {
@@ -49,6 +50,16 @@ export const inventoryService = {
    */
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/inventory/${id}`);
+  },
+
+  /**
+   * Get inventory logs (History)
+   */
+  getLogs: async (id: number): Promise<InventoryLog[]> => {
+    const response = await apiClient.get<InventoryLog[]>(
+      `/inventory/${id}/logs`,
+    );
+    return response.data;
   },
 
   /**

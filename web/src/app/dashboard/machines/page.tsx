@@ -154,10 +154,10 @@ export default function MachinesPage() {
           {machines.map((machine) => (
             <div
               key={machine.id}
-              className="bg-white border border-[#F0EDE4] rounded-sm p-5 hover:shadow-sm transition-shadow"
+              className="bg-white border border-[#F0EDE4] rounded-sm p-5 hover:shadow-sm transition-shadow h-full flex flex-col"
             >
               {/* Machine Icon & Name */}
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-4 flex-1">
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-12 h-12 rounded-full flex items-center justify-center ${machineService.getStatusBgColor(machine.status)}/10`}

@@ -14,6 +14,7 @@ import {
   X,
   Minus,
   Trash2,
+  History,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { inventoryService } from "@/services/inventory.service";
@@ -22,6 +23,7 @@ import type {
   CreateInventoryItemDto,
   UpdateStockDto,
   InventoryLogType,
+  InventoryLog,
 } from "@/types";
 
 export default function InventoryPage() {
@@ -31,6 +33,7 @@ export default function InventoryPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [stockAction, setStockAction] = useState<"add" | "remove" | null>(null);
+  const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
 
   const fetchItems = async () => {
     try {
@@ -91,22 +94,15 @@ export default function InventoryPage() {
           fetchItems();
         } catch (error) {
           console.error("Error deleting item:", error);
-          // Show error in a new modal state or via toast.
-          // For now, let's close the confirm modal and show an error modal or reuse logic?
-          // Simplest is to update the confirm modal to show error or close it and show alert (the user said no alert).
-          // Better: Close confirm, and show Error via Alert/Toast (User uses react-hot-toast elsewhere? No, inventory page doesn't seem to import it yet. Users page does.)
-          // Let's import toast or show error in modal?
-          // Since user requested custom alert even for errors, let's change message.
-
           setConfirmModal({
             isOpen: true,
             title: "Gagal Menghapus",
             message: getErrorMessage(error),
             variant: "danger",
             isLoading: false,
-            onConfirm: closeConfirmModal, // Close on OK
+            onConfirm: closeConfirmModal,
             confirmLabel: "Tutup",
-            cancelLabel: "", // Hide cancel
+            cancelLabel: "",
           } as any);
         }
       },
@@ -204,23 +200,32 @@ export default function InventoryPage() {
                     >
                       {status.label}
                     </span>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-sm transition-colors"
-                      title="Hapus Item"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setHistoryItem(item)}
+                        className="p-2 text-[#A19E95] hover:bg-gray-50 rounded-sm transition-colors"
+                        title="Riwayat Stok"
+                      >
+                        <History size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-sm transition-colors"
+                        title="Hapus Item"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-2xl font-light text-[#1A1A1A]">
-                      {item.stockQuantity}
+                      {formatDisplayUnit(item.stockQuantity, item.unit)}
                     </p>
                     <p className="text-[10px] text-[#A19E95]">
-                      Min: {item.minStockAlert} {item.unit}
+                      Min: {formatDisplayUnit(item.minStockAlert, item.unit)}
                     </p>
                   </div>
 
@@ -264,6 +269,14 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {/* History Modal */}
+      {historyItem && (
+        <StockHistoryModal
+          item={historyItem}
+          onClose={() => setHistoryItem(null)}
+        />
+      )}
+
       {/* Add Item Modal */}
       {showAddModal && (
         <AddItemModal
@@ -304,6 +317,147 @@ export default function InventoryPage() {
         confirmLabel={(confirmModal as any).confirmLabel}
         cancelLabel={(confirmModal as any).cancelLabel}
       />
+    </div>
+  );
+}
+
+// Format Unit Helper
+function formatDisplayUnit(value: number, unit: string) {
+  if (unit === "ml" && value >= 1000) {
+    const val = value / 1000;
+    return `${val % 1 === 0 ? val : val.toFixed(2)} Liter`;
+  }
+  if (unit === "gr" && value >= 1000) {
+    const val = value / 1000;
+    return `${val % 1 === 0 ? val : val.toFixed(2)} Kg`;
+  }
+  return `${value} ${unit}`;
+}
+
+// Stock History Modal
+function StockHistoryModal({
+  item,
+  onClose,
+}: {
+  item: InventoryItem;
+  onClose: () => void;
+}) {
+  const [logs, setLogs] = useState<InventoryLog[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const data = await inventoryService.getLogs(item.id);
+        setLogs(data);
+      } catch (error) {
+        console.error("Error fetching logs:", error);
+        toast.error("Gagal memuat riwayat");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, [item.id]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-white rounded-sm shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="flex items-center justify-between p-6 border-b border-[#F0EDE4]">
+          <div>
+            <h3 className="text-lg font-light text-[#1A1A1A]">Riwayat Stok</h3>
+            <p className="text-xs text-[#A19E95] mt-1">
+              {item.name} ({formatDisplayUnit(item.stockQuantity, item.unit)})
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[#A19E95] hover:text-[#1A1A1A]"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-0">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 size={24} className="animate-spin text-[#C5A059]" />
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="text-center py-10 text-[#A19E95] text-sm">
+              Belum ada riwayat transaksi.
+            </div>
+          ) : (
+            <table className="w-full text-sm text-left">
+              <thead className="bg-[#FAF9F6] text-[#A19E95] font-medium text-[10px] uppercase tracking-wider">
+                <tr>
+                  <th className="px-6 py-3">Waktu</th>
+                  <th className="px-6 py-3">Aktivitas</th>
+                  <th className="px-6 py-3 text-right">Jumlah</th>
+                  <th className="px-6 py-3 text-right">Oleh</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F0EDE4]">
+                {logs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50/50">
+                    <td className="px-6 py-3 text-[#1A1A1A]">
+                      {new Date(log.createdAt).toLocaleString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          log.type === "PURCHASE"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : log.type === "USAGE"
+                              ? "bg-amber-50 text-amber-600"
+                              : "bg-blue-50 text-blue-600"
+                        }`}
+                      >
+                        {log.type === "PURCHASE"
+                          ? "BELI"
+                          : log.type === "USAGE"
+                            ? "PAKAI"
+                            : "ADJUST"}
+                      </span>
+                    </td>
+                    <td
+                      className={`px-6 py-3 text-right font-medium ${
+                        log.changeAmount > 0
+                          ? "text-emerald-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {log.changeAmount > 0 ? "+" : ""}
+                      {formatDisplayUnit(log.changeAmount, item.unit).replace(
+                        item.unit,
+                        "",
+                      )}{" "}
+                      {log.changeAmount} {item.unit}
+                    </td>
+                    <td className="px-6 py-3 text-right text-[#A19E95] text-xs">
+                      {log.actor?.username || "System"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-[#F0EDE4] bg-[#FAF9F6]">
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-white border border-[#E5E2D9] text-[#1A1A1A] text-[11px] font-bold tracking-[0.2em] uppercase rounded-sm hover:border-[#C5A059] transition-colors"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

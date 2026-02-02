@@ -108,6 +108,12 @@ export class OrdersService {
             });
 
             if (inventoryItem) {
+              if (inventoryItem.stockQuantity < deductionAmount) {
+                throw new BadRequestException(
+                  `Stok '${inventoryItem.name}' tidak cukup! (Butuh: ${deductionAmount} ${inventoryItem.unit}, Sisa: ${inventoryItem.stockQuantity} ${inventoryItem.unit})`,
+                );
+              }
+
               // Update Stock
               await tx.inventoryItem.update({
                 where: { id: recipe.inventoryItemId },

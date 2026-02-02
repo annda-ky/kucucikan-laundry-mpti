@@ -260,6 +260,19 @@ export interface UpdateStockDto {
   type: InventoryLogType;
 }
 
+export interface InventoryLog {
+  id: string;
+  inventoryItemId: number;
+  changeAmount: number;
+  type: InventoryLogType;
+  actorId: string;
+  createdAt: string;
+  actor?: {
+    username: string;
+    role: Role;
+  };
+}
+
 // =============================================
 // REPORT TYPES
 // =============================================

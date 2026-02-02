@@ -104,4 +104,16 @@ export class InventoryService {
       );
     }
   }
+  async getLogs(inventoryItemId: number) {
+    return this.prisma.inventoryLog.findMany({
+      where: { inventoryItemId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        actor: {
+          select: { username: true, role: true },
+        },
+      },
+      take: 20, // Limit log history
+    });
+  }
 }

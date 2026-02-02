@@ -34,6 +34,11 @@ export class InventoryController {
     return this.inventoryService.findOne(+id);
   }
 
+  @Get(':id/logs')
+  getLogs(@Param('id') id: string) {
+    return this.inventoryService.getLogs(+id);
+  }
+
   @Patch(':id/stock')
   updateStock(
     @Param('id') id: string,

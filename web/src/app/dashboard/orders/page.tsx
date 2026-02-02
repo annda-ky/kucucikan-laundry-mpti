@@ -37,8 +37,8 @@ export default function OrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const data = await orderService.getAll();
-      setOrders(data);
+      const response = await orderService.getAll(1, 50); // Fetch 50 recent orders
+      setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
     } finally {

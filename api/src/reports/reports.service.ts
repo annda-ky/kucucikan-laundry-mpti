@@ -104,14 +104,18 @@ export class ReportsService {
     for (let i = 0; i < 7; i++) {
       const d = new Date(sevenDaysAgo);
       d.setDate(d.getDate() + i);
-      // Use local YYYY-MM-DD to match user's timezone perspective
-      const dateKey = d.toLocaleDateString('en-CA');
+      // Use local YYYY-MM-DD to match user's timezone perspective (Asia/Jakarta)
+      const dateKey = d.toLocaleDateString('en-CA', {
+        timeZone: 'Asia/Jakarta',
+      });
       dailyRevenueMap.set(dateKey, 0);
     }
 
     revenueRaw.forEach((item) => {
       // Use local YYYY-MM-DD
-      const dateKey = item.createdAt.toLocaleDateString('en-CA');
+      const dateKey = item.createdAt.toLocaleDateString('en-CA', {
+        timeZone: 'Asia/Jakarta',
+      });
 
       // Update existing key or add new one (though map should cover the range)
       // Note: If data falls outside the 7-day range due to edge cases, it's safer to check first

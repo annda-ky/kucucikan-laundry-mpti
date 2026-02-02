@@ -36,7 +36,10 @@ export default function OwnerDashboardPage() {
   >([]);
   const [topCustomers, setTopCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [revenueChange, setRevenueChange] = useState({
+  const [revenueChange, setRevenueChange] = useState<{
+    value: number;
+    isPositive: boolean;
+  }>({
     value: 0,
     isPositive: true,
   });
@@ -54,14 +57,27 @@ export default function OwnerDashboardPage() {
 
         setSummary(summaryData);
         setMachines(machinesData);
-        if (chartData) {
+
+        if (chartData && chartData.revenueChart.length >= 2) {
           setRevenueData(chartData.revenueChart);
           setServiceData(chartData.serviceChart);
           setPaymentData(chartData.paymentChart);
-        }
-        setTopCustomers(leaderboardData.slice(0, 5));
 
-        setRevenueChange({ value: 0, isPositive: true });
+          const todayRevenue =
+            chartData.revenueChart[chartData.revenueChart.length - 1].value;
+          const yesterdayRevenue =
+            chartData.revenueChart[chartData.revenueChart.length - 2].value;
+
+          const change = reportService.getPercentageChange(
+            todayRevenue,
+            yesterdayRevenue,
+          );
+          setRevenueChange(change);
+        } else {
+          setRevenueChange({ value: 0, isPositive: true });
+        }
+
+        setTopCustomers(leaderboardData.slice(0, 5));
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {

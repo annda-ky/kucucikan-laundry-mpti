@@ -108,10 +108,16 @@ export const reportService = {
     current: number,
     previous: number,
   ): { value: number; isPositive: boolean } => {
-    if (previous === 0) return { value: 0, isPositive: true };
-    const change = ((current - previous) / previous) * 100;
+    let change: number;
+
+    if (previous === 0) {
+      change = current === 0 ? 0 : 100;
+    } else {
+      change = ((current - previous) / previous) * 100;
+    }
+
     return {
-      value: Math.abs(Math.round(change)),
+      value: Number(Math.abs(change).toFixed(1)),
       isPositive: change >= 0,
     };
   },

@@ -104,16 +104,24 @@ export class ReportsService {
     for (let i = 0; i < 7; i++) {
       const d = new Date(sevenDaysAgo);
       d.setDate(d.getDate() + i);
-      dailyRevenueMap.set(d.toISOString().split('T')[0], 0);
+      // Use local YYYY-MM-DD to match user's timezone perspective
+      const dateKey = d.toLocaleDateString('en-CA');
+      dailyRevenueMap.set(dateKey, 0);
     }
 
     revenueRaw.forEach((item) => {
-      const dateKey = item.createdAt.toISOString().split('T')[0];
-      const current = dailyRevenueMap.get(dateKey) || 0;
-      dailyRevenueMap.set(
-        dateKey,
-        current + Number(item._sum.totalAmount || 0),
-      );
+      // Use local YYYY-MM-DD
+      const dateKey = item.createdAt.toLocaleDateString('en-CA');
+
+      // Update existing key or add new one (though map should cover the range)
+      // Note: If data falls outside the 7-day range due to edge cases, it's safer to check first
+      if (dailyRevenueMap.has(dateKey)) {
+        const current = dailyRevenueMap.get(dateKey) || 0;
+        dailyRevenueMap.set(
+          dateKey,
+          current + Number(item._sum.totalAmount || 0),
+        );
+      }
     });
 
     const revenueChart = Array.from(dailyRevenueMap.entries()).map(
@@ -157,10 +165,21 @@ export class ReportsService {
       },
     });
 
-    const paymentChart = paymentMethodsRaw.map((item) => ({
-      name: item.paymentMethod || 'CASH',
-      value: Number(item._sum.totalAmount || 0),
-    }));
+    const paymentMap = new Map<string, number>();
+
+    paymentMethodsRaw.forEach((item) => {
+      // Normalize name: Handle null/undefined and ensure uppercase
+      const name = (item.paymentMethod || 'CASH').toUpperCase();
+      const current = paymentMap.get(name) || 0;
+      paymentMap.set(name, current + Number(item._sum.totalAmount || 0));
+    });
+
+    const paymentChart = Array.from(paymentMap.entries()).map(
+      ([name, value]) => ({
+        name,
+        value,
+      }),
+    );
 
     return {
       revenueChart,

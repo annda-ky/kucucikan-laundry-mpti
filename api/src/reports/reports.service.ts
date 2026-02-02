@@ -7,80 +7,166 @@ export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
   async getDashboardSummary() {
-    const today = new Date();
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
 
-      // 1. Revenue & Payment Status (Simpler Query)
-      const dailyRevenue = await this.prisma.order.aggregate({
-        _sum: { totalAmount: true },
-        where: {
-          createdAt: { gte: today, lt: tomorrow },
-          statusPayment: 'PAID',
-        },
-      });
-
-      // 2. Fetch Raw Data for Counting (In-Memory Filtering) to avoid Enum 500 Errors
-      const allOrders = await this.prisma.order.findMany({
-        select: {
-          statusLaundry: true,
-          statusPayment: true,
-          createdAt: true,
-        },
-      });
-
-      const allInventoryItems = await this.prisma.inventoryItem.findMany({
-        select: {
-          name: true,
-          stockQuantity: true,
-          minStockAlert: true,
-          unit: true,
-        },
-      });
-
-      // Calculate Stats in In-Memory (Robust)
-      const transactionsCount = allOrders.filter(
-        (o) => o.createdAt >= today && o.createdAt < tomorrow,
-      ).length;
-
-      const activeOrdersCount = allOrders.filter((o) => {
-        const isActive = ['PENDING', 'WASHING', 'DRYING', 'IRONING'].includes(
-          o.statusLaundry,
-        );
-        const isNotVoid = o.statusPayment !== 'VOID';
-        return isActive && isNotVoid;
-      }).length;
-
-      const completedOrdersCount = allOrders.filter(
-        (o) =>
-          o.statusLaundry === 'DONE' &&
-          o.createdAt >= today &&
-          o.createdAt < tomorrow,
-      ).length;
-
-      const lowStockItems = allInventoryItems.filter(
-        (item) => item.stockQuantity <= item.minStockAlert,
-      );
+      // 1. Basic Counts
+      const [
+        totalRevenueAgg,
+        todayRevenueAgg,
+        totalOrders,
+        activeOrders,
+        todayCompleted,
+        inventoryAlerts,
+      ] = await Promise.all([
+        // Total Revenue All Time
+        this.prisma.order.aggregate({
+          _sum: { totalAmount: true },
+          where: { statusPayment: 'PAID' },
+        }),
+        // Today Revenue
+        this.prisma.order.aggregate({
+          _sum: { totalAmount: true },
+          where: {
+            statusPayment: 'PAID',
+            createdAt: { gte: today, lt: tomorrow },
+          },
+        }),
+        // Total Transactions Today
+        this.prisma.order.count({
+          where: {
+            createdAt: { gte: today, lt: tomorrow },
+          },
+        }),
+        // Active Orders
+        this.prisma.order.count({
+          where: {
+            statusLaundry: { in: ['PENDING', 'WASHING', 'DRYING', 'IRONING'] },
+            statusPayment: { not: 'VOID' },
+          },
+        }),
+        // Completed Today
+        this.prisma.order.count({
+          where: {
+            statusLaundry: 'DONE',
+            createdAt: { gte: today, lt: tomorrow },
+          },
+        }),
+        // Inventory Alerts
+        this.prisma.inventoryItem.count({
+          where: {
+            stockQuantity: {
+              lte: this.prisma.inventoryItem.fields.minStockAlert,
+            },
+          },
+        }),
+      ]);
 
       return {
         date: new Date(),
         summary: {
-          totalRevenue: Number(dailyRevenue._sum.totalAmount || 0),
-          totalTransactions: transactionsCount,
-          activeMachines: 0,
+          totalRevenue: Number(todayRevenueAgg._sum.totalAmount || 0),
+          totalTransactions: totalOrders,
+          activeMachines: 0, // Fetched from machine service separately
           totalMachines: 0,
-          completedOrders: completedOrdersCount,
-          pendingOrders: activeOrdersCount,
+          completedOrders: todayCompleted,
+          pendingOrders: activeOrders,
         },
-        lowStockItems: lowStockItems,
+        lowStockItems: [], // Optimization: Don't send full list here, just count is enough for badges
+        lowStockCount: inventoryAlerts,
       };
     } catch (error) {
       console.error('SERVER ERROR in getDashboardSummary:', error);
       throw error;
     }
+  }
+
+  async getChartData() {
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    // 1. Daily Revenue (Last 7 Days)
+    const revenueRaw = await this.prisma.order.groupBy({
+      by: ['createdAt'],
+      _sum: { totalAmount: true },
+      where: {
+        createdAt: { gte: sevenDaysAgo },
+        statusPayment: 'PAID',
+      },
+    });
+
+    const dailyRevenueMap = new Map<string, number>();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sevenDaysAgo);
+      d.setDate(d.getDate() + i);
+      dailyRevenueMap.set(d.toISOString().split('T')[0], 0);
+    }
+
+    revenueRaw.forEach((item) => {
+      const dateKey = item.createdAt.toISOString().split('T')[0];
+      const current = dailyRevenueMap.get(dateKey) || 0;
+      dailyRevenueMap.set(
+        dateKey,
+        current + Number(item._sum.totalAmount || 0),
+      );
+    });
+
+    const revenueChart = Array.from(dailyRevenueMap.entries()).map(
+      ([date, value]) => ({
+        name: new Date(date).toLocaleDateString('id-ID', { weekday: 'short' }),
+        value,
+      }),
+    );
+
+    // 2. Top Services (Last 30 Days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    const topServicesRaw = await this.prisma.orderItem.groupBy({
+      by: ['serviceNameSnapshot'],
+      _count: { id: true },
+      where: {
+        order: {
+          createdAt: { gte: thirtyDaysAgo },
+          statusPayment: { not: 'VOID' },
+        },
+      },
+      orderBy: {
+        _count: { id: 'desc' },
+      },
+      take: 5,
+    });
+
+    const serviceChart = topServicesRaw.map((item) => ({
+      name: item.serviceNameSnapshot,
+      value: item._count.id,
+    }));
+
+    // 3. Payment Methods (Last 30 Days)
+    const paymentMethodsRaw = await this.prisma.order.groupBy({
+      by: ['paymentMethod'],
+      _sum: { totalAmount: true },
+      where: {
+        createdAt: { gte: thirtyDaysAgo },
+        statusPayment: 'PAID',
+      },
+    });
+
+    const paymentChart = paymentMethodsRaw.map((item) => ({
+      name: item.paymentMethod || 'CASH',
+      value: Number(item._sum.totalAmount || 0),
+    }));
+
+    return {
+      revenueChart,
+      serviceChart,
+      paymentChart,
+    };
   }
 
   async getMonthlyFinanceSummary(startDate?: string, endDate?: string) {

@@ -44,106 +44,24 @@ export default function OwnerDashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [summaryData, machinesData, ordersData, leaderboardData] =
+        const [summaryData, machinesData, chartData, leaderboardData] =
           await Promise.all([
             reportService.getDashboard(),
             machineService.getAll(),
-            orderService.getAll(1, 100).then((res) => res.data), // Extract data array
+            reportService.getChartData(),
             customerService.getLeaderboard("totalSpend"),
           ]);
+
         setSummary(summaryData);
         setMachines(machinesData);
+        if (chartData) {
+          setRevenueData(chartData.revenueChart);
+          setServiceData(chartData.serviceChart);
+          setPaymentData(chartData.paymentChart);
+        }
         setTopCustomers(leaderboardData.slice(0, 5));
 
-        const today = new Date();
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const todayStr = today.toISOString().split("T")[0];
-        const yesterdayStr = yesterday.toISOString().split("T")[0];
-
-        const todayRevenue = ordersData
-          .filter(
-            (o) =>
-              o.createdAt.startsWith(todayStr) && o.statusPayment === "PAID",
-          )
-          .reduce((sum, o) => sum + Number(o.totalAmount), 0);
-
-        const yesterdayRevenue = ordersData
-          .filter(
-            (o) =>
-              o.createdAt.startsWith(yesterdayStr) &&
-              o.statusPayment === "PAID",
-          )
-          .reduce((sum, o) => sum + Number(o.totalAmount), 0);
-
-        const change = reportService.getPercentageChange(
-          todayRevenue,
-          yesterdayRevenue,
-        );
-        setRevenueChange(change);
-
-        const last7Days = [...Array(7)]
-          .map((_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            return d.toISOString().split("T")[0];
-          })
-          .reverse();
-
-        const dailyRevenue = last7Days.map((date) => {
-          const dayTotal = ordersData
-            .filter(
-              (o) => o.createdAt.startsWith(date) && o.statusPayment === "PAID",
-            )
-            .reduce((sum, o) => sum + Number(o.totalAmount), 0);
-
-          return {
-            name: new Date(date).toLocaleDateString("id-ID", {
-              weekday: "short",
-            }),
-            value: dayTotal,
-          };
-        });
-        setRevenueData(dailyRevenue);
-
-        const serviceStats: Record<string, number> = {};
-        ordersData.forEach((o) => {
-          o.orderItems?.forEach((item) => {
-            const name = item.serviceNameSnapshot;
-            serviceStats[name] = (serviceStats[name] || 0) + 1;
-          });
-        });
-
-        const serviceChartData = Object.entries(serviceStats)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5);
-        setServiceData(serviceChartData);
-
-        let cashRevenue = 0;
-        let digitalRevenue = 0;
-
-        ordersData.forEach((o) => {
-          if (o.statusPayment === "PAID") {
-            const method = o.paymentMethod || "CASH";
-            const amount = Number(o.totalAmount);
-
-            if (method === "CASH") {
-              cashRevenue += amount;
-            } else {
-              digitalRevenue += amount;
-            }
-          }
-        });
-
-        const paymentChartData = [
-          { name: "Tunai", value: cashRevenue },
-          { name: "Digital", value: digitalRevenue },
-        ].filter((item) => item.value > 0);
-        setPaymentData(paymentChartData);
-
-        setRecentOrders(ordersData.slice(0, 5));
+        setRevenueChange({ value: 0, isPositive: true });
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -209,6 +127,7 @@ export default function OwnerDashboardPage() {
         </p>
       </header>
 
+      {/* 1. KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => {
           const IconComponent = stat.icon;
@@ -254,23 +173,22 @@ export default function OwnerDashboardPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RevenueBarChart
-          data={revenueData}
-          title="Pendapatan Minggu Ini"
-          isDark
-        />
-        <ServicePieChart data={serviceData} title="Top Layanan" isDark />
-        <ServicePieChart
-          data={paymentData}
-          title="Metode Pembayaran (Revenue)"
-          isDark
-        />
+      {/* 2. Main Analytics Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue Chart (Takes 2/3) */}
+        <div className="lg:col-span-2">
+          <RevenueBarChart
+            data={revenueData}
+            title="Trend Pendapatan (7 Hari)"
+            isDark
+          />
+        </div>
 
-        <div className="p-6 bg-[#1A1A1A] border border-[#2A2A2A] rounded-sm flex flex-col">
+        {/* Top Customers (Takes 1/3) */}
+        <div className="p-6 bg-[#1A1A1A] border border-[#2A2A2A] rounded-sm flex flex-col h-full">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-[11px] font-bold tracking-[0.2em] text-white uppercase">
-              Top Pelanggan Sultan
+              Top Pelanggan
             </h3>
             <Users size={16} className="text-[#C5A059]" />
           </div>
@@ -278,16 +196,18 @@ export default function OwnerDashboardPage() {
             {topCustomers.map((customer, index) => (
               <div
                 key={customer.id}
-                className="flex items-center justify-between"
+                className="flex items-center justify-between group"
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-transform group-hover:scale-110 ${
                       index === 0
-                        ? "bg-[#C5A059] text-[#1A1A1A]"
+                        ? "bg-gradient-to-br from-[#C5A059] to-[#8C7036] text-[#1A1A1A]"
                         : index === 1
                           ? "bg-[#E5E2D9] text-[#1A1A1A]"
-                          : "bg-[#2A2A2A] text-[#808080]"
+                          : index === 2
+                            ? "bg-[#A19E95] text-[#1A1A1A]"
+                            : "bg-[#2A2A2A] text-[#808080]"
                     }`}
                   >
                     {index + 1}
@@ -307,99 +227,27 @@ export default function OwnerDashboardPage() {
               </div>
             ))}
             {topCustomers.length === 0 && (
-              <div className="text-center text-[#808080] text-xs py-8">
-                Belum ada data pelanggan.
+              <div className="text-center text-[#808080] text-xs py-12 flex flex-col items-center">
+                <Users size={24} className="mb-2 opacity-20" />
+                Belum ada data pelanggan VIP.
               </div>
             )}
+          </div>
+          <div className="mt-4 pt-4 border-t border-[#2A2A2A]">
+            <p className="text-[9px] text-[#808080] text-center">
+              *Berdasarkan total pembelanjaan all-time
+            </p>
           </div>
         </div>
       </div>
 
+      {/* 3. Secondary Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="p-6 bg-[#1A1A1A] border border-[#2A2A2A] rounded-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[11px] font-bold tracking-[0.2em] text-white uppercase">
-              Status Mesin
-            </h2>
-            <WashingMachine size={16} className="text-[#C5A059]" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {machines.slice(0, 8).map((machine) => (
-              <div
-                key={machine.id}
-                className={`p-3 rounded-sm border ${
-                  machine.status === "IDLE"
-                    ? "border-emerald-500/30 bg-emerald-500/5"
-                    : machine.status === "WASHING"
-                      ? "border-amber-500/30 bg-amber-500/5"
-                      : machine.status === "OVERDUE"
-                        ? "border-red-500/30 bg-red-500/5"
-                        : "border-[#2A2A2A]"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-white">
-                    {machine.name}
-                  </span>
-                  <div
-                    className={`w-2 h-2 rounded-full ${machineService.getStatusBgColor(
-                      machine.status,
-                    )}`}
-                  />
-                </div>
-                <p className="text-[9px] text-[#808080] mt-1">
-                  {machineService.getStatusLabel(machine.status)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-6 bg-[#1A1A1A] border border-[#2A2A2A] rounded-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[11px] font-bold tracking-[0.2em] text-white uppercase">
-              Transaksi Terbaru
-            </h2>
-            <Users size={16} className="text-[#C5A059]" />
-          </div>
-          <div className="space-y-3">
-            {recentOrders.length > 0 ? (
-              recentOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between gap-4 p-3 bg-[#0F0F0F] rounded-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold text-white truncate">
-                      {order.invoiceNumber}
-                    </p>
-                    <p className="text-[9px] text-[#808080] truncate">
-                      {order.customer?.name || "Customer"}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[10px] font-medium text-[#C5A059]">
-                      {reportService.formatRevenue(order.totalAmount)}
-                    </p>
-                    <p
-                      className={`text-[9px] font-bold ${orderService.getPaymentStatusColor(
-                        order.statusPayment,
-                      )}`}
-                    >
-                      {orderService.getPaymentStatusLabel(order.statusPayment)}
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-[#808080] text-sm py-8">
-                Belum ada transaksi
-              </p>
-            )}
-          </div>
-        </div>
+        <ServicePieChart data={serviceData} title="Distribusi Layanan" isDark />
+        <ServicePieChart data={paymentData} title="Metode Pembayaran" isDark />
       </div>
 
+      {/* 4. Actions */}
       <div className="p-6 bg-gradient-to-r from-[#C5A059]/10 to-transparent border border-[#C5A059]/20 rounded-sm">
         <div className="flex items-center justify-between">
           <div>
@@ -407,7 +255,7 @@ export default function OwnerDashboardPage() {
               Export Laporan
             </h3>
             <p className="text-[#808080] text-sm">
-              Download laporan transaksi dalam format CSV
+              Unduh laporan transaksi dalam format CSV
             </p>
           </div>
           <button

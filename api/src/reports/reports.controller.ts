@@ -17,6 +17,11 @@ export class ReportsController {
     return this.reportsService.getDashboardSummary();
   }
 
+  @Get('charts')
+  getCharts() {
+    return this.reportsService.getChartData();
+  }
+
   @Get('finance')
   getFinance(@Query() query: { startDate?: string; endDate?: string }) {
     return this.reportsService.getMonthlyFinanceSummary(

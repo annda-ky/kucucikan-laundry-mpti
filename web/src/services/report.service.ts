@@ -14,6 +14,15 @@ export const reportService = {
     return response.data.summary;
   },
 
+  getChartData: async () => {
+    const response = await apiClient.get<{
+      revenueChart: { name: string; value: number }[];
+      serviceChart: { name: string; value: number }[];
+      paymentChart: { name: string; value: number }[];
+    }>("/reports/charts");
+    return response.data;
+  },
+
   getFinanceSummary: async (
     startDate?: string,
     endDate?: string,

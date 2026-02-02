@@ -43,13 +43,15 @@ export default function DashboardPage() {
 
     const fetchData = async () => {
       try {
-        const [summaryData, machinesData, ordersData] = await Promise.all([
+        const [summaryData, machinesData, ordersResponse] = await Promise.all([
           reportService.getDashboard().catch(() => null),
           machineService.getAll().catch(() => []),
-          orderService.getAll().catch(() => []),
+          orderService.getAll(1, 100).catch(() => ({ data: [] as Order[] })), // Limit 100 for stats
         ]);
         if (summaryData) setSummary(summaryData);
         setMachines(machinesData);
+
+        const ordersData = ordersResponse.data || [];
 
         // Process Orders for Charts
         // 1. Weekly Revenue (Last 7 days)
@@ -64,7 +66,8 @@ export default function DashboardPage() {
         const dailyRevenue = last7Days.map((date) => {
           const dayTotal = ordersData
             .filter(
-              (o) => o.createdAt.startsWith(date) && o.statusPayment === "PAID",
+              (o) =>
+                o?.createdAt?.startsWith(date) && o?.statusPayment === "PAID",
             )
             .reduce((sum, o) => sum + Number(o.totalAmount), 0);
 

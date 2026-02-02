@@ -42,10 +42,10 @@ export default function OperationsPage() {
   const fetchData = useCallback(async () => {
     try {
       const [ordersData, machinesData] = await Promise.all([
-        orderService.getAll(),
+        orderService.getAll(1, 50), // Fetch 50 active orders for operations view
         machineService.getAll(),
       ]);
-      setOrders(ordersData);
+      setOrders(ordersData.data);
       setMachines(machinesData);
     } catch (error) {
       console.error("Error fetching data:", error);

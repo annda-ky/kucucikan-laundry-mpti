@@ -15,7 +15,12 @@ import {
   ToggleRight,
 } from "lucide-react";
 import { serviceService } from "@/services/service.service";
-import type { Service, CreateServiceDto, UnitType } from "@/types";
+import type {
+  Service,
+  CreateServiceDto,
+  UnitType,
+  InventoryItem,
+} from "@/types";
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -224,12 +229,85 @@ function ServiceModal({
 }) {
   const [formData, setFormData] = useState<CreateServiceDto>({
     name: service?.name || "",
-    price: service?.price || 0,
+    price: Number(service?.price) || 0,
     unitType: service?.unitType || "KG",
     defaultDuration: service?.defaultDuration || 45,
+    recipes:
+      service?.recipes?.map((r) => ({
+        inventoryItemId: r.inventoryItemId,
+        quantity: r.quantity,
+      })) || [],
   });
   const [isActive, setIsActive] = useState(service?.isActive ?? true);
   const [loading, setLoading] = useState(false);
+
+  // Recipe State
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<number | "">("");
+  const [recipeQty, setRecipeQty] = useState<number>(0);
+
+  // Logic to load inventory
+  useEffect(() => {
+    // We need to import inventoryService.
+    // Since it's not imported in this file yet, I'll assume we need to add the import or pass it.
+    // Ideally we import it.
+    // For now, let's try to dynamic import or just assume I need to add import line at top.
+    // I will add import in a separate edit or assume it's available?
+    // No, I must import it. I will use 'require' or just add logic assuming I can fix imports.
+    // Actually, I can't easily add import with this tool if I'm replacing the bottom part.
+    // I will add the import in a previous step? No, I'll try to do it all here but I can't touch top.
+    // I will rely on the fact that I can edit the top part separately or use `apiClient` directly?
+    // Using `apiClient` directly is safer if I can't access `inventoryService`.
+    // Let's use `apiClient` to fetch /inventory-items
+
+    const fetchInventory = async () => {
+      try {
+        // Assuming /inventory endpoint exists and returns array
+        const response = await import("@/services/inventory.service").then(
+          (m) => m.inventoryService.getAll(),
+        );
+        setInventoryItems(response);
+      } catch (e) {
+        console.error("Failed to load inventory for recipes");
+      }
+    };
+    fetchInventory();
+  }, []);
+
+  const addRecipeItem = () => {
+    if (!selectedItemId || recipeQty <= 0) return;
+
+    // Check if already exists
+    if (
+      formData.recipes?.some(
+        (r) => r.inventoryItemId === Number(selectedItemId),
+      )
+    ) {
+      alert("Item ini sudah ada di resep.");
+      return;
+    }
+
+    const newItem = {
+      inventoryItemId: Number(selectedItemId),
+      quantity: recipeQty,
+    };
+
+    setFormData({
+      ...formData,
+      recipes: [...(formData.recipes || []), newItem],
+    });
+
+    // Reset inputs
+    setSelectedItemId("");
+    setRecipeQty(0);
+  };
+
+  const removeRecipeItem = (itemId: number) => {
+    setFormData({
+      ...formData,
+      recipes: formData.recipes?.filter((r) => r.inventoryItemId !== itemId),
+    });
+  };
 
   const unitTypes: { value: UnitType; label: string }[] = [
     { value: "KG", label: "Kilogram (KG)" },
@@ -257,7 +335,7 @@ function ServiceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white rounded-sm shadow-2xl">
+      <div className="w-full max-w-lg bg-white rounded-sm shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-[#F0EDE4]">
           <h3 className="text-lg font-light text-[#1A1A1A]">
             {service ? "Edit" : "Tambah"}{" "}
@@ -272,6 +350,7 @@ function ServiceModal({
         </div>
 
         <div className="p-6 space-y-5">
+          {/* ... Basic Info ... */}
           <div>
             <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#A19E95] block mb-2">
               Nama Layanan
@@ -347,6 +426,80 @@ function ServiceModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Recipe Section */}
+          <div className="p-4 bg-gray-50 border border-dashed border-gray-300 rounded-sm">
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#1A1A1A] mb-3">
+              Resep / Bahan Baku (Auto-Deduct)
+            </h4>
+
+            <div className="flex gap-2 mb-3">
+              <select
+                value={selectedItemId}
+                onChange={(e) =>
+                  setSelectedItemId(Number(e.target.value) || "")
+                }
+                className="flex-1 px-3 py-2 border border-[#F0EDE4] rounded-sm text-xs bg-white"
+              >
+                <option value="">-- Pilih Item --</option>
+                {inventoryItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.unit})
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                placeholder="Jml"
+                className="w-20 px-3 py-2 border border-[#F0EDE4] rounded-sm text-xs"
+                value={recipeQty || ""}
+                onChange={(e) => setRecipeQty(Number(e.target.value))}
+              />
+              <button
+                onClick={addRecipeItem}
+                className="px-3 py-2 bg-[#1A1A1A] text-white rounded-sm hover:bg-[#C5A059]"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+
+            {formData.recipes && formData.recipes.length > 0 ? (
+              <div className="space-y-2">
+                {formData.recipes.map((recipe, idx) => {
+                  const item = inventoryItems.find(
+                    (i) => i.id === recipe.inventoryItemId,
+                  );
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between text-xs bg-white p-2 border border-[#F0EDE4]"
+                    >
+                      <span>
+                        {item?.name || `Item #${recipe.inventoryItemId}`}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold">
+                          {recipe.quantity} {item?.unit}
+                        </span>
+                        <button
+                          onClick={() =>
+                            removeRecipeItem(recipe.inventoryItemId)
+                          }
+                          className="text-red-500"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[10px] text-gray-400 italic text-center">
+                Belum ada resep.
+              </p>
+            )}
           </div>
 
           {service && (

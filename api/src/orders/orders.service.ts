@@ -21,6 +21,7 @@ export class OrdersService {
   ) {}
 
   async create(createOrderDto: CreateOrderDto, cashierId: string) {
+    // Check active shift
     const activeShift = await this.prisma.shift.findFirst({
       where: { cashierId, endTime: null },
     });
@@ -39,6 +40,7 @@ export class OrdersService {
     for (const item of items) {
       const service = await this.prisma.service.findUnique({
         where: { id: item.serviceId },
+        include: { recipes: true }, // Include recipes
       });
 
       if (!service) {
@@ -56,9 +58,19 @@ export class OrdersService {
         quantity: item.quantity,
         subtotal: subtotal,
       });
+
+      // Prepare inventory deduction logic (will be executed inside transaction)
+      // We attach it to the item so we can use it later or just re-fetch inside TX?
+      // Better: Re-fetch inside TX or pass data.
+      // Since we are inside a loop before TX, we can't execute TX operations yet.
+      // We will move this loop INSIDE the transaction or prepare data here.
+      // BUT: 'items' iteration calculates totalAmount which is needed for order creation.
+      // Let's modify the flow to do everything inside TX? No, price calculation is read-only usually.
+      // Best approach: Collect recipe deductions needed.
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // 1. Create Order
       const order = await tx.order.create({
         data: {
           invoiceNumber,
@@ -76,6 +88,45 @@ export class OrdersService {
         },
         include: { orderItems: true, customer: true },
       });
+
+      // 2. Process Inventory Deduction
+      // We need to iterate again or use the data we gathered.
+      // Let's iterate through the input items again as it is cheap.
+      for (const item of items) {
+        const service = await tx.service.findUnique({
+          where: { id: item.serviceId },
+          include: { recipes: true },
+        });
+
+        if (service && service.recipes.length > 0) {
+          for (const recipe of service.recipes) {
+            const deductionAmount = recipe.quantity * item.quantity;
+
+            // Check stock
+            const inventoryItem = await tx.inventoryItem.findUnique({
+              where: { id: recipe.inventoryItemId },
+            });
+
+            if (inventoryItem) {
+              // Update Stock
+              await tx.inventoryItem.update({
+                where: { id: recipe.inventoryItemId },
+                data: { stockQuantity: { decrement: deductionAmount } },
+              });
+
+              // Log Usage
+              await tx.inventoryLog.create({
+                data: {
+                  inventoryItemId: recipe.inventoryItemId,
+                  changeAmount: -deductionAmount,
+                  type: 'USAGE',
+                  actorId: cashierId, // Cashier is the actor
+                },
+              });
+            }
+          }
+        }
+      }
 
       if (machineId) {
         await tx.machine.update({

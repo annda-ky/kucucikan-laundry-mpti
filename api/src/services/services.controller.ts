@@ -37,13 +37,13 @@ export class ServicesController {
     return this.servicesService.findOne(+id);
   }
 
-  @Roles(Role.OWNER)
+  @Roles(Role.OWNER, Role.ADMIN)
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateServiceDto: UpdateServiceDto) {
     return this.servicesService.update(+id, updateServiceDto);
   }
 
-  @Roles(Role.OWNER)
+  @Roles(Role.OWNER, Role.ADMIN)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.servicesService.remove(+id);

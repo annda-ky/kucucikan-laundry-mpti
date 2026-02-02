@@ -8,8 +8,15 @@ export class ServicesService {
   constructor(private prisma: PrismaService) {}
 
   create(createServiceDto: CreateServiceDto) {
+    const { recipes, ...data } = createServiceDto;
     return this.prisma.service.create({
-      data: createServiceDto,
+      data: {
+        ...data,
+        recipes: {
+          create: recipes,
+        },
+      },
+      include: { recipes: { include: { inventoryItem: true } } },
     });
   }
 
@@ -17,6 +24,7 @@ export class ServicesService {
     return this.prisma.service.findMany({
       where: { isActive: true }, // Hanya tampilkan yang aktif
       orderBy: { name: 'asc' },
+      include: { recipes: { include: { inventoryItem: true } } },
     });
   }
 
@@ -24,19 +32,38 @@ export class ServicesService {
   findAllRaw() {
     return this.prisma.service.findMany({
       orderBy: { name: 'asc' },
+      include: { recipes: { include: { inventoryItem: true } } },
     });
   }
 
   findOne(id: number) {
     return this.prisma.service.findUnique({
       where: { id },
+      include: { recipes: { include: { inventoryItem: true } } },
     });
   }
 
   update(id: number, updateServiceDto: UpdateServiceDto) {
+    const { recipes, ...data } = updateServiceDto;
+
+    // Handle recipes update if provided
+    let recipeUpdate = {};
+    if (recipes) {
+      recipeUpdate = {
+        recipes: {
+          deleteMany: {}, // Clear existing
+          create: recipes, // Create new
+        },
+      };
+    }
+
     return this.prisma.service.update({
       where: { id },
-      data: updateServiceDto,
+      data: {
+        ...data,
+        ...recipeUpdate,
+      },
+      include: { recipes: { include: { inventoryItem: true } } },
     });
   }
 

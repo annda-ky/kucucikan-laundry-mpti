@@ -63,6 +63,12 @@ export interface Service {
   defaultDuration: number;
   iconUrl?: string;
   isActive: boolean;
+  recipes?: {
+    id: number;
+    inventoryItemId: number;
+    quantity: number;
+    inventoryItem?: InventoryItem;
+  }[];
 }
 
 export interface CreateServiceDto {
@@ -71,6 +77,10 @@ export interface CreateServiceDto {
   unitType: UnitType;
   defaultDuration?: number;
   iconUrl?: string;
+  recipes?: {
+    inventoryItemId: number;
+    quantity: number;
+  }[];
 }
 
 export interface UpdateServiceDto extends Partial<CreateServiceDto> {

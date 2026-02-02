@@ -15,8 +15,8 @@ import Link from "next/link";
 import { reportService } from "@/services/report.service";
 import { machineService } from "@/services/machine.service";
 import { orderService } from "@/services/order.service";
-import { RevenueBarChart } from "@/components/ui/charts/bar-chart";
-import { ServicePieChart } from "@/components/ui/charts/pie-chart";
+import { AmRevenueChart } from "@/components/ui/charts/AmRevenueChart";
+import { AmPieChart } from "@/components/ui/charts/AmPieChart";
 import type { DashboardSummary, Machine, Order } from "@/types";
 
 export default function DashboardPage() {
@@ -346,11 +346,8 @@ export default function DashboardPage() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RevenueBarChart
-          data={revenueData}
-          title="Pendapatan 7 Hari Terakhir"
-        />
-        <ServicePieChart data={serviceData} title="Layanan Terpopuler" />
+        <AmRevenueChart data={revenueData} title="Pendapatan 7 Hari Terakhir" />
+        <AmPieChart data={serviceData} title="Layanan Terpopuler" />
       </div>
     </div>
   );

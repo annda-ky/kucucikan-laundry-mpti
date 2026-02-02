@@ -8,7 +8,7 @@ import { authService } from "@/services/auth.service";
 
 export function PinForm() {
   const [pin, setPin] = useState("");
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();

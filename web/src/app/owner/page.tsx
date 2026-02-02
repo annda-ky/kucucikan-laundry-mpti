@@ -16,8 +16,8 @@ import {
 import { reportService } from "@/services/report.service";
 import { machineService } from "@/services/machine.service";
 import { orderService } from "@/services/order.service";
-import { RevenueBarChart } from "@/components/ui/charts/bar-chart";
-import { ServicePieChart } from "@/components/ui/charts/pie-chart";
+import { AmRevenueChart } from "@/components/ui/charts/AmRevenueChart";
+import { AmPieChart } from "@/components/ui/charts/AmPieChart";
 import { customerService } from "@/services/customer.service";
 import type { DashboardSummary, Machine, Order, Customer } from "@/types";
 
@@ -177,7 +177,7 @@ export default function OwnerDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue Chart (Takes 2/3) */}
         <div className="lg:col-span-2">
-          <RevenueBarChart
+          <AmRevenueChart
             data={revenueData}
             title="Trend Pendapatan (7 Hari)"
             isDark
@@ -243,8 +243,8 @@ export default function OwnerDashboardPage() {
 
       {/* 3. Secondary Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ServicePieChart data={serviceData} title="Distribusi Layanan" isDark />
-        <ServicePieChart data={paymentData} title="Metode Pembayaran" isDark />
+        <AmPieChart data={serviceData} title="Distribusi Layanan" isDark />
+        <AmPieChart data={paymentData} title="Metode Pembayaran" isDark />
       </div>
 
       {/* 4. Actions */}

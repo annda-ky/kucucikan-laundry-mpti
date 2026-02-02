@@ -17,16 +17,7 @@ import { reportService } from "@/services/report.service";
 import { shiftService } from "@/services/shift.service";
 import { FinanceSummary, Shift } from "@/types";
 import toast from "react-hot-toast";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { AmFinanceChart } from "@/components/ui/charts/AmFinanceChart";
 
 export default function OwnerReportsPage() {
   const [activeTab, setActiveTab] = useState<"OVERVIEW" | "AUDIT">("OVERVIEW");
@@ -303,66 +294,12 @@ function FinancialOverview({ finance }: { finance: FinanceSummary | null }) {
       </div>
 
       {/* Chart Section */}
-      <div className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-sm">
-        <h3 className="text-lg font-medium text-white mb-6 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-[#C5A059]" />
-          Analisis Keuangan
-        </h3>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#2A2A2A"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="name"
-                stroke="#808080"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#808080"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${value / 1000}k`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1A1A1A",
-                  borderColor: "#2A2A2A",
-                  color: "#fff",
-                }}
-                formatter={(value: any) => [
-                  `Rp ${(value || 0).toLocaleString("id-ID")}`,
-                  "",
-                ]}
-              />
-              <Legend wrapperStyle={{ paddingTop: "20px" }} />
-              <Bar
-                name="Pemasukan"
-                dataKey="income"
-                fill="#22c55e"
-                radius={[4, 4, 0, 0]}
-                barSize={40}
-              />
-              <Bar
-                name="Pengeluaran"
-                dataKey="expense"
-                fill="#ef4444"
-                radius={[4, 4, 0, 0]}
-                barSize={40}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      <AmFinanceChart
+        data={chartData}
+        title="Analisis Keuangan"
+        isDark
+        className="w-full"
+      />
 
       {/* Recent Transactions Table */}
       <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-sm overflow-hidden">

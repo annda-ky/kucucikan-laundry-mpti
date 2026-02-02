@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@amcharts/amcharts5": "^5.15.5",
     "@tippyjs/react": "^4.2.6",
     "axios": "^1.13.2",
     "lucide-react": "^0.563.0",

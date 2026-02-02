@@ -22,14 +22,7 @@ export class AuthService {
       throw new UnauthorizedException('Username tidak ditemukan');
     }
 
-    console.log(`[DEBUG] Login attempt for ${username}`);
-    console.log(`[DEBUG] Input PIN type: ${typeof pin}, Value: ${pin}`);
-    console.log(
-      `[DEBUG] Stored Hash: ${user.pin_hash.substring(0, 10)}... (Length: ${user.pin_hash.length})`,
-    );
-
     const isMatch = await bcrypt.compare(pin, user.pin_hash);
-    console.log(`[DEBUG] Is Match: ${isMatch}`);
 
     if (!isMatch) {
       throw new UnauthorizedException('PIN Salah');

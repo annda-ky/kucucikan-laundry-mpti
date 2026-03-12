@@ -9,6 +9,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Memaksa pakai Node 24 sesuai saran peringatan tadi
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Node.js version
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # Update dari v3 ke v4
         with:
           node-version: '22.x'
 
@@ -28,13 +31,13 @@ jobs:
           npm install
           npm run build --if-present
           npm run test --if-present
-        working-directory: api # <--- INI SUDAH SAYA TAMBAHKAN
+        working-directory: api
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: api # <--- INI SUDAH SAYA UBAH KE FOLDER API
+          path: api
 
   deploy:
     runs-on: ubuntu-latest

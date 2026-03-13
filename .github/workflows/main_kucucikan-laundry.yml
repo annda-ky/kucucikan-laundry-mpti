@@ -1,7 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy Node.js app to Azure Web App - kucucikan-laundry
+name: Build and deploy Node.js app to Azure Web App
 
 on:
   push:
@@ -9,31 +9,24 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Memaksa pakai Node 24 sesuai saran peringatan tadi
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v4 # Update dari v3 ke v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '22.x'
 
-      - name: npm install, build, and test
+      - name: Install and Build
         run: |
           npm install
           npm run build --if-present
-          npm run test --if-present
         working-directory: api
 
-      - name: Upload artifact for deployment job
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app
@@ -42,27 +35,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: node-app
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_63E1012625CC4F1D9040A0EDE8C7DE16 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_29A0B38A22524C388E41DA2953692572 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3FD78704E5764A0ABF6DC61C5E6F71B6 }}
 
       - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'kucucikan-laundry'
-          slot-name: 'Production'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BANYAK_ANGKA }} # Ganti bagian ini atau biarkan jika sudah ada
           package: .

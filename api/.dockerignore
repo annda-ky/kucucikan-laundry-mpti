@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+.git
+.gitignore
+.vscode
+*.md
+debug-reports.ts
+fix-users.js

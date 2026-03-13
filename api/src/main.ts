@@ -1,11 +1,14 @@
+/* eslint-disable @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, BadRequestException } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { INestApplication } from '@nestjs/common';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
+// Pisahkan logika setup agar bisa dipakai di local maupun Vercel
+async function setupApp(app: INestApplication) {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -24,8 +27,26 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+  // Swagger akan tersedia di /docs
   SwaggerModule.setup('docs', app, document);
+}
 
+// Untuk Local Development
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  await setupApp(app);
   await app.listen(process.env.PORT || 3000, '0.0.0.0');
 }
-bootstrap();
+
+if (process.env.NODE_ENV !== 'production') {
+  bootstrap();
+}
+
+// Export untuk Vercel Serverless
+export default async (req: any, res: any) => {
+  const app = await NestFactory.create(AppModule);
+  await setupApp(app);
+  await app.init();
+  const instance = app.getHttpAdapter().getInstance();
+  instance(req, res);
+};

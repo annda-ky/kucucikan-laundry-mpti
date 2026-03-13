@@ -276,67 +276,7 @@ npm run dev
 
 ---
 
-### Opsi 2: Deploy dengan Docker
-
-#### Docker Compose (Full Stack)
-
-Buat file `docker-compose.yml` di root project:
-
-```yaml
-version: "3.8"
-
-services:
-  db:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      POSTGRES_USER: kucucikan
-      POSTGRES_PASSWORD: secret_password
-      POSTGRES_DB: kucucikan_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://kucucikan:secret_password@db:5432/kucucikan_db
-      JWT_SECRET: your-jwt-secret
-      PORT: 4000
-    ports:
-      - "4000:4000"
-    depends_on:
-      - db
-
-  web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-    restart: always
-    environment:
-      NEXT_PUBLIC_API_URL: http://api:4000
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api
-
-volumes:
-  postgres_data:
-```
-
-**Build & Run:**
-
-```bash
-docker-compose up -d --build
-```
-
----
-
-### Opsi 3: Deploy ke VPS (Manual)
+### Opsi 2: Deploy ke VPS (Manual)
 
 #### 1. Setup Server
 

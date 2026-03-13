@@ -1,12 +1,11 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy Node.js app to Azure Web App
+name: Build and deploy Node.js app
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -15,12 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cek Struktur Folder (Buat Debug)
+        run: ls -R # Ini buat mastiin folder 'api' beneran ada
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '20' # Kita turunin dikit ke 20 biar stabil
 
-      - name: Install and Build
+      - name: Install & Build
         run: |
           npm install
           npm run build --if-present
@@ -30,7 +32,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: api
+          path: api/dist # Biasanya NestJS hasilnya ada di folder dist
 
   deploy:
     runs-on: ubuntu-latest
@@ -40,10 +42,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-
-      - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
+      
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v2
         with:
           app-name: 'kucucikan-laundry'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BANYAK_ANGKA }} # Ganti bagian ini atau biarkan jika sudah ada
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BANYAK_ANGKA }}
           package: .
